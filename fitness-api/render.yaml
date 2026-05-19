@@ -1,0 +1,59 @@
+services:
+  - type: web
+    name: fitness-tracker-api
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: fitness-tracker-db
+          property: connectionString
+      - key: REDIS_URL
+        fromDatabase:
+          name: fitness-tracker-redis
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ADMIN_EMAILS
+        value: ["admin@example.com"]
+      - key: SMTP_TLS
+        value: "true"
+      # Add other email settings as needed, preferably from another service or direct input
+
+  - type: worker
+    name: fitness-tracker-worker
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: celery -A app.tasks.email.celery_app worker --loglevel=info
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: fitness-tracker-db
+          property: connectionString
+      - key: REDIS_URL
+        fromDatabase:
+          name: fitness-tracker-redis
+          property: connectionString
+      - key: SECRET_KEY
+        fromService:
+          name: fitness-tracker-api
+          kind: envVars
+          property: SECRET_KEY
+      - key: ADMIN_EMAILS
+        fromService:
+          name: fitness-tracker-api
+          kind: envVars
+          property: ADMIN_EMAILS
+      - key: SMTP_TLS
+        value: "true"
+      # Add other email settings as needed
+
+databases:
+  - name: fitness-tracker-db
+    engine: postgres
+    plan: starter
+
+  - name: fitness-tracker-redis
+    engine: redis
+    plan: starter
