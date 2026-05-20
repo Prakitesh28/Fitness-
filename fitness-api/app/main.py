@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routers import auth, users, workouts, exercises, metrics, nutrition, stats, coach
 from app.config import settings
 from app.database import engine, Base
+from app.seed import seed_exercises
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -36,6 +37,7 @@ async def ensure_tables_exist() -> None:
     # may not yet exist/applied.
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    await seed_exercises()
 
 @app.get("/")
 async def root():

@@ -15,7 +15,11 @@ async def create_user(db: AsyncSession, user_in: UserCreate, hashed_password: st
     user = User(
         email=user_in.email,
         hashed_password=hashed_password,
-        name=user_in.name
+        name=user_in.name,
+        calories_goal=user_in.calories_goal if user_in.calories_goal is not None else 2200,
+        protein_goal=user_in.protein_goal if user_in.protein_goal is not None else 150,
+        carbs_goal=user_in.carbs_goal if user_in.carbs_goal is not None else 250,
+        fat_goal=user_in.fat_goal if user_in.fat_goal is not None else 70,
     )
     db.add(user)
     await db.commit()

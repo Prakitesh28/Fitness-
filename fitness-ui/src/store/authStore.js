@@ -15,11 +15,16 @@ export const useAuthStore = create((set) => ({
   },
   login: async (values) => {
     set({ loading: true });
-    const data = await loginApi(values);
-    localStorage.setItem('accessToken', data.access_token);
-    localStorage.setItem('refreshToken', data.refresh_token);
-    const user = await getMe();
-    set({ token: data.access_token, refreshToken: data.refresh_token, user, loading: false });
+    try {
+      const data = await loginApi(values);
+      localStorage.setItem('accessToken', data.access_token);
+      localStorage.setItem('refreshToken', data.refresh_token);
+      const user = await getMe();
+      set({ token: data.access_token, refreshToken: data.refresh_token, user });
+      return user;
+    } finally {
+      set({ loading: false });
+    }
   },
   register: async (values) => registerApi(values),
   hydrate: async () => {
@@ -29,7 +34,13 @@ export const useAuthStore = create((set) => ({
     try {
       const user = await getMe();
       set({ user, token });
-    } finally { set({ loading: false }); }
+    } catch {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      set({ token: null, refreshToken: null, user: null });
+    } finally {
+      set({ loading: false });
+    }
   },
   logout: async () => {
     try { await logoutApi(); } catch {}

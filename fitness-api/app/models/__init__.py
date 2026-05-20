@@ -30,6 +30,10 @@ class User(Base, AsyncAttrs):
     hashed_password = Column(String(255), nullable=False)
     name = Column(String(255), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    calories_goal = Column(Integer, nullable=False, default=2200)
+    protein_goal = Column(Integer, nullable=False, default=150)
+    carbs_goal = Column(Integer, nullable=False, default=250)
+    fat_goal = Column(Integer, nullable=False, default=70)
 
     # Relationships
     workout_sessions = relationship("WorkoutSession", back_populates="user", cascade="all, delete-orphan")

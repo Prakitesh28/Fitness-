@@ -1,11 +1,17 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, and_
+from sqlalchemy.orm import selectinload
 from app.models import WorkoutSession, SessionExercise, Set, Exercise
 from app.schemas.workout import WorkoutSessionCreate, WorkoutSessionUpdate, SessionExerciseCreate, SetCreate
 from typing import List, Optional
 
 async def get_workout_session(db: AsyncSession, session_id: int) -> WorkoutSession | None:
-    result = await db.execute(select(WorkoutSession).where(WorkoutSession.id == session_id))
+    query = select(WorkoutSession).options(
+        selectinload(WorkoutSession.user),
+        selectinload(WorkoutSession.session_exercises).selectinload(SessionExercise.exercise),
+        selectinload(WorkoutSession.session_exercises).selectinload(SessionExercise.sets),
+    ).where(WorkoutSession.id == session_id)
+    result = await db.execute(query)
     return result.scalar_one_or_none()
 
 async def get_workout_sessions_by_user(
@@ -16,7 +22,11 @@ async def get_workout_sessions_by_user(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None
 ) -> List[WorkoutSession]:
-    query = select(WorkoutSession).where(WorkoutSession.user_id == user_id)
+    query = select(WorkoutSession).options(
+        selectinload(WorkoutSession.user),
+        selectinload(WorkoutSession.session_exercises).selectinload(SessionExercise.exercise),
+        selectinload(WorkoutSession.session_exercises).selectinload(SessionExercise.sets),
+    ).where(WorkoutSession.user_id == user_id)
     if start_date:
         query = query.where(WorkoutSession.date >= start_date)
     if end_date:
@@ -115,7 +125,7 @@ async def add_set_to_exercise(
         return None
     # Get the current max set number for this session_exercise to set order if not provided
     # But we are using set_number from input, so we just create
-    stmt = select(Set).where(SessionExercise.id == session_exercise_id).order_by(Set.set_number.desc())
+    stmt = select(Set).where(Set.session_exercise_id == session_exercise_id).order_by(Set.set_number.desc())
     result = await db.execute(stmt)
     last_set = result.scalar_one_or_none()
     set_number = set_in.set_number
