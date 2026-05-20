@@ -21,6 +21,18 @@ import { changePassword, deleteMe, updateMe } from './api/users';
 
 const colors = ['#38bdf8', '#22c55e', '#f59e0b', '#a855f7', '#ec4899'];
 
+// Safely compute total session volume (kg) from a workout/session object.
+// Returns 0 for null/undefined sessions or when sets are missing.
+const sessionVolume = (session) => {
+  if (!session) return 0;
+  try {
+    const sets = session.session_exercises?.flatMap((ex) => ex.sets || []) || [];
+    return sets.reduce((sum, set) => sum + (Number(set?.reps) || 0) * (Number(set?.weight_kg) || 0), 0);
+  } catch (e) {
+    return 0;
+  }
+};
+
 const getErrorMessage = (error) => {
   if (!error) return 'Request failed';
   if (typeof error === 'string') return error;
@@ -159,7 +171,7 @@ export function Dashboard() {
     return Object.values(map).sort((a, b) => a.week.localeCompare(b.week));
   }, [volumeHistory]);
 
-  const sessionVolume = (session) => session.session_exercises?.flatMap((ex) => ex.sets || []).reduce((sum, set) => sum + set.reps * set.weight_kg, 0) || 0;
+  
 
   if (loading) {
     return (
@@ -371,7 +383,7 @@ export function Workouts() {
               </div>
               <div className="rounded-3xl bg-slate-950/80 p-4">
                 <p className="text-sm text-slate-400">Volume</p>
-                <p className="mt-2 text-xl font-semibold text-white">{Math.round(activeSession.session_exercises?.flatMap((exercise) => exercise.sets || []).reduce((sum, set) => sum + set.reps * set.weight_kg, 0) || 0)} kg</p>
+                <p className="mt-2 text-xl font-semibold text-white">{Math.round(sessionVolume(activeSession) || 0)} kg</p>
               </div>
               <div className="rounded-3xl bg-slate-950/80 p-4">
                 <p className="text-sm text-slate-400">Date</p>
@@ -831,16 +843,22 @@ export function Nutrition() {
               <h2 className="text-2xl font-semibold text-white">Macro summary</h2>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              {['calories', 'protein', 'carbs', 'fat'].map((metric) => (
-                <div key={metric} className="rounded-3xl border border-slate-800/80 bg-slate-950/80 p-4">
-                  <p className="text-sm uppercase tracking-[0.2em] text-slate-400">{metric}</p>
-                  <p className="mt-2 text-2xl font-semibold text-white">{todayTotals[metric]}{metric !== 'calories' ? 'g' : ''}</p>
-                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-900">
-                    <div className="h-full rounded-full bg-brand-500 transition-all" style={{ width: `${progress[metric]}%` }} />
+              {['calories', 'protein', 'carbs', 'fat'].map((metric) => {
+                const key = metric === 'calories' ? 'calories' : `${metric}_g`;
+                const value = todayTotals[key] ?? 0;
+                const pct = progress[metric] ?? 0;
+                const goalLabel = metric === 'calories' ? (user?.calories_goal ?? 2200) : (user?.[`${metric}_goal`] ?? 0);
+                return (
+                  <div key={metric} className="rounded-3xl border border-slate-800/80 bg-slate-950/80 p-4">
+                    <p className="text-sm uppercase tracking-[0.2em] text-slate-400">{metric}</p>
+                    <p className="mt-2 text-2xl font-semibold text-white">{value}{metric !== 'calories' ? 'g' : ''}</p>
+                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-900">
+                      <div className="h-full rounded-full bg-brand-500 transition-all" style={{ width: `${pct}%` }} />
+                    </div>
+                    <p className="mt-2 text-sm text-slate-500">{pct}% of {goalLabel}{metric === 'calories' ? '' : 'g'}</p>
                   </div>
-                  <p className="mt-2 text-sm text-slate-500">{progress[metric]}% of {metric === 'calories' ? (user?.calories_goal ?? 2200) : (user?.[`${metric}_goal`] ?? 0)}{metric === 'calories' ? '' : 'g'}</p>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </Card>
 
