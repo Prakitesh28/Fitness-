@@ -1,8 +1,13 @@
 import client from './client';
 
 export const login = async ({ email, password }) => {
-  const body = new URLSearchParams({ username: email, password });
-  const { data } = await client.post('/auth/login', body, { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
+  const body = new URLSearchParams();
+  body.append('username', email);
+  body.append('password', password);
+
+  const { data } = await client.post('/auth/login', body.toString(), {
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+  });
   return data;
 };
 

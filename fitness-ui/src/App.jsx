@@ -26,8 +26,22 @@ const vol=(session)=>session.session_exercises?.flatMap(e=>e.sets||[]).reduce((s
 
 function Protected({children}){const {token,loading}=useAuthStore(); if(loading)return <Skeleton className='h-screen'/>; return token?children:<Navigate to='/login'/>}
 
+const getErrorMessage = (error) => {
+  if (!error) return 'Request failed';
+  if (typeof error === 'string') return error;
+  if (error.response?.data) {
+    const { data } = error.response;
+    if (typeof data === 'string') return data;
+    if (data.detail) return typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail);
+    if (data.message) return typeof data.message === 'string' ? data.message : JSON.stringify(data.message);
+    return JSON.stringify(data);
+  }
+  if (error.message) return error.message;
+  return String(error);
+};
+
 export function AuthPage({mode}){const nav=useNavigate();const {login,register}=useAuthStore();const schema=mode==='login'?z.object({email:z.string().email(),password:z.string().min(1)}):z.object({name:z.string().min(2),email:z.string().email(),password:z.string().min(8),confirm:z.string()}).refine(v=>v.password===v.confirm,{path:['confirm'],message:'Passwords do not match'}); const {register:rf,handleSubmit,formState:{errors,isSubmitting}}=useForm({resolver:zodResolver(schema),defaultValues:mode==='login'?{email:'',password:''}:{name:'',email:'',password:'',confirm:''}});
-const onSubmit=async(v)=>{try{if(mode==='login'){await login(v);toast.success('Welcome back');nav('/dashboard');}else{await register({name:v.name,email:v.email,password:v.password});toast.success('Registered, please login');nav('/login');}}catch(e){toast.error(e.response?.data?.detail||'Request failed')}};
+const onSubmit=async(v)=>{try{if(mode==='login'){await login(v);toast.success('Welcome back');nav('/dashboard');}else{await register({name:v.name,email:v.email,password:v.password});toast.success('Registered, please login');nav('/login');}}catch(e){toast.error(getErrorMessage(e))}};
 return <div className='mx-auto mt-16 max-w-md p-4'><Card><h1 className='mb-4 text-2xl font-bold'>{mode==='login'?'Login':'Register'}</h1><form className='space-y-3' onSubmit={handleSubmit(onSubmit)}>{mode!=='login'&&<Input placeholder='Name' {...rf('name')}/>}<Input placeholder='Email' {...rf('email')}/><Input type='password' placeholder='Password' {...rf('password')}/>{mode!=='login'&&<Input type='password' placeholder='Confirm password' {...rf('confirm')}/>}<Button disabled={isSubmitting} className='w-full'>{mode==='login'?'Login':'Create account'}</Button>{Object.values(errors)[0]&&<p className='text-sm text-red-500'>{Object.values(errors)[0].message}</p>}</form></Card></div>}
 
 export function Dashboard(){const [loading,setLoading]=useState(true);const [workouts,setWorkouts]=useState([]);const [trend,setTrend]=useState([]);const [streak,setStreakVal]=useState(0);const [volumeSeries,setVolumeSeries]=useState([]);const [open,setOpen]=useState(false);const nav=useNavigate();
