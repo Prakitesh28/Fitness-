@@ -38,7 +38,15 @@ async def ensure_tables_exist() -> None:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     await seed_exercises()
+    # Log startup message
+    from datetime import datetime
+    print(f"[{datetime.now().isoformat()}] APEX API is live")
 
 @app.get("/")
 async def root():
     return {"message": "Welcome to Fitness Tracker API"}
+
+@app.get("/health")
+async def health_check():
+    from datetime import datetime
+    return {"status": "ok", "timestamp": datetime.now().isoformat()}

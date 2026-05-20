@@ -82,7 +82,13 @@ export default function Navbar({ onToggleSidebar } ) {
         <div className="sm:hidden z-40 w-full border-t border-[var(--border)] bg-[var(--bg)]">
           <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-4">
             {links.map((to) => (
-              <NavLink key={to} to={to} onClick={() => setMobileOpen(false)} className={({ isActive }) => `block rounded-md px-3 py-3 text-[var(--text-primary)] ${isActive ? 'bg-[var(--accent)] text-white' : 'text-[var(--text-secondary)]'}`}>
+              <NavLink key={to} to={to} onClick={() => setMobileOpen(false)} className={({ isActive }) => `
+                block px-4 py-3 text-[0.875rem] font-normal tracking-[0.02em] transition-all duration-200
+                ${isActive
+                  ? 'border-l-[3px] border-l-[#DC143C] bg-[rgba(220,20,60,0.08)] text-white pl-[12px]'
+                  : 'text-[#7a7a9a] hover:text-white'
+                }
+              `}>
                 {to.replace('/', '').toLowerCase()}
               </NavLink>
             ))}
