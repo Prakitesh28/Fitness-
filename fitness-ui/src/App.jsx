@@ -1,5 +1,5 @@
 ﻿import { BrowserRouter, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -48,12 +48,21 @@ const getErrorMessage = (error) => {
   return String(error);
 };
 
-const Spinner = ({ label = 'Loading' }) => (
-  <div className="flex items-center justify-center gap-3 rounded-3xl bg-[var(--surface)] px-6 py-5 text-sm text-[var(--text-secondary)] shadow-lg shadow-[0_0_24px_rgba(220,20,60,0.12)]">
-    <div className="h-5 w-5 animate-spin rounded-full border-4 border-[var(--border)] border-t-transparent" />
-    <span>{label}</span>
-  </div>
-);
+const Spinner = ({ label }) => {
+  const loadingMsgs = [
+    'Initialising Batcomputer...',
+    "Accessing Gotham's training logs...",
+    "The Dark Knight is watching your gains...",
+    'Loading',
+  ];
+  const text = label || loadingMsgs[Math.floor(Math.random() * loadingMsgs.length)];
+  return (
+    <div className="flex items-center justify-center gap-3 rounded-3xl bg-[var(--surface)] px-6 py-5 text-sm text-[var(--text-secondary)] shadow-lg shadow-[0_0_24px_rgba(220,20,60,0.12)]">
+      <div className="h-5 w-5 animate-spin rounded-full border-4 border-[var(--border)] border-t-transparent" />
+      <span>{text}</span>
+    </div>
+  );
+};
 
 function Protected({ children }) {
   const { token, loading } = useAuthStore();
@@ -91,6 +100,17 @@ export function AuthPage({ mode }) {
     }
   };
 
+  const quotes = [
+    "It's not who I am underneath, but what I do that defines me.",
+    'Why do we fall? So we can learn to pick ourselves up.',
+    'I am vengeance. I am the night.',
+    "The night is darkest just before the dawn.",
+    "Everything's impossible until somebody does it.",
+    'You either die a hero or you live long enough to see yourself become the villain.',
+    'I wear a mask. And that mask is not to hide who I am, but to create what I am.',
+  ];
+  const quote = useMemo(() => quotes[Math.floor(Math.random() * quotes.length)], []);
+
   return (
     <div className="min-h-screen bg-[var(--bg)] p-6 text-[var(--text-primary)]">
       <div className="mx-auto flex max-w-5xl flex-col gap-10 rounded-[2rem] border border-[var(--border)] bg-[var(--surface)] p-8 shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur-xl sm:flex-row">
@@ -122,6 +142,7 @@ export function AuthPage({ mode }) {
               <p>Already have an account? <button type="button" className="font-semibold text-white underline" onClick={() => navigate('/login')}>Login here</button></p>
             )}
           </div>
+          <div className="mt-4 text-sm text-[var(--text-secondary)] italic">"{quote}"</div>
         </Card>
       </div>
     </div>
@@ -399,7 +420,7 @@ export function Workouts() {
           <Card>
             <div className="space-y-4">
               <p className="text-lg font-semibold text-white">No sessions yet</p>
-              <p className="text-[var(--text-secondary)]">Create your first workout session to start building progress.</p>
+              <p className="text-[var(--text-secondary)]">Training is not optional. The city needs its protector.</p>
               <Button onClick={handleStart}>Create first session</Button>
             </div>
           </Card>
@@ -431,6 +452,11 @@ export function WorkoutSession() {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [sessionName, setSessionName] = useState('');
+  const [sessionType, setSessionType] = useState('Custom');
+  const [elapsed, setElapsed] = useState(0);
+  const [timers, setTimers] = useState({});
+  const autosaveRef = useRef(null);
 
   const loadSession = async () => {
     setLoading(true);
@@ -442,6 +468,8 @@ export function WorkoutSession() {
       }
       const [workout, exerciseList] = await Promise.all([getWorkoutById(id), getExercises()]);
       setSession(workout);
+      setSessionName(workout.name || `Session ${format(new Date(workout.date), 'PPP')}`);
+      setSessionType(workout.type || 'Custom');
       setExercises(exerciseList);
     } catch (error) {
       toast.error(getErrorMessage(error));
@@ -452,34 +480,63 @@ export function WorkoutSession() {
 
   useEffect(() => { loadSession(); }, [id]);
 
+  // elapsed timer
+  useEffect(() => {
+    let interval;
+    if (session) {
+      const start = Date.now();
+      setElapsed(0);
+      interval = setInterval(() => setElapsed(Math.floor((Date.now() - start) / 1000)), 1000);
+    }
+    return () => clearInterval(interval);
+  }, [session]);
+
+  // autosave notes every 30s
+  useEffect(() => {
+    if (!session) return undefined;
+    autosaveRef.current = setInterval(() => {
+      if (session?.notes != null) {
+        updateWorkout(session.id, { notes: session.notes }).catch(() => {});
+      }
+    }, 30000);
+    return () => clearInterval(autosaveRef.current);
+  }, [session]);
+
   const addExercise = async (exercise) => {
-    setSaving(true);
+    // optimistic add
+    if (session.session_exercises?.some((e) => e.exercise.id === exercise.id)) {
+      toast.error('Exercise already in session');
+      return;
+    }
+    const temp = { id: `tmp-${Date.now()}`, exercise: { ...exercise }, sets: [] };
+    setSession((s) => ({ ...s, session_exercises: [...(s.session_exercises || []), temp] }));
     try {
-      await addExerciseToWorkout(session.id, { exercise_id: exercise.id, order_index: session.session_exercises.length });
+      setSaving(true);
+      await addExerciseToWorkout(session.id, { exercise_id: exercise.id, order_index: session.session_exercises?.length || 0 });
       setSession(await getWorkoutById(session.id));
       toast.success('Exercise added');
     } catch (error) {
       toast.error(getErrorMessage(error));
-    } finally {
-      setSaving(false);
-    }
+      // rollback
+      setSession((s) => ({ ...s, session_exercises: (s.session_exercises || []).filter((e) => e.id !== temp.id) }));
+    } finally { setSaving(false); }
   };
 
   const addSet = async (exercise) => {
     setSaving(true);
     try {
+      const defaultSet = (exercise.sets?.at(-1)) || { reps: 10, weight_kg: 20, rpe: null };
       await addSetToExercise(session.id, exercise.exercise.id, {
         set_number: (exercise.sets?.length || 0) + 1,
-        reps: 10,
-        weight_kg: 20,
+        reps: defaultSet.reps,
+        weight_kg: defaultSet.weight_kg,
+        rpe: defaultSet.rpe,
       });
       setSession(await getWorkoutById(session.id));
       toast.success('Set added');
     } catch (error) {
       toast.error(getErrorMessage(error));
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   };
 
   const removeExercise = async (exercise) => {
@@ -511,16 +568,63 @@ export function WorkoutSession() {
   if (loading) return <PageWrapper><Spinner label="Loading session..." /></PageWrapper>;
   if (!session) return <PageWrapper><Card><p className="text-[var(--text-secondary)]">Session not found.</p></Card></PageWrapper>;
 
+  const types = ['Push', 'Pull', 'Legs', 'Upper', 'Lower', 'Full Body', 'Custom'];
+
+  const handleSetComplete = (exerciseId, setId, currentSet) => {
+    // validate
+    if (!currentSet.reps || !currentSet.weight_kg) { toast.error('Fill reps and weight before completing'); return; }
+    // mark locally
+    setSession((s) => ({
+      ...s,
+      session_exercises: (s.session_exercises || []).map((ex) => ex.id === exerciseId ? ({
+        ...ex,
+        sets: (ex.sets || []).map((st) => st.id === setId ? ({ ...st, completed: !st.completed }) : st),
+      }) : ex),
+    }));
+    // start rest timer
+    setTimers((t) => ({ ...t, [exerciseId]: { remaining: 90, running: true } }));
+  };
+
+  // timers tick
+  useEffect(() => {
+    const ids = Object.keys(timers);
+    if (!ids.length) return undefined;
+    const iv = setInterval(() => {
+      setTimers((prev) => {
+        const next = { ...prev };
+        ids.forEach((id) => {
+          if (next[id] && next[id].running) {
+            next[id].remaining = Math.max(0, next[id].remaining - 1);
+            if (next[id].remaining === 0) next[id].running = false;
+          }
+        });
+        return next;
+      });
+    }, 1000);
+    return () => clearInterval(iv);
+  }, [timers]);
+
   return (
     <PageWrapper>
       <div className="space-y-6">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <p className="section-label">Workout session</p>
-            <h1 className="text-3xl font-semibold text-white">{format(new Date(session.date), 'PPP')}</h1>
-            <p className="mt-2 text-[var(--text-secondary)]">Add exercises, log sets, and save notes for this session.</p>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
+              <input value={sessionName} onChange={(e) => setSessionName(e.target.value)} onBlur={async () => { try { await updateWorkout(session.id, { name: sessionName }); } catch (e) {} }} className="text-2xl font-semibold bg-transparent text-white outline-none" />
+              <div className="flex gap-2 flex-wrap">
+                {types.map((t) => (
+                  <button key={t} type="button" onClick={() => { setSessionType(t); updateWorkout(session.id, { type: t }).catch(() => {}); }} className={`px-3 py-1 rounded-full text-sm ${sessionType === t ? 'bg-[var(--accent)] text-white' : 'bg-[var(--surface)] text-[var(--text-secondary)]'}`}>{t}</button>
+                ))}
+              </div>
+            </div>
+            <p className="mt-2 text-[var(--text-secondary)]">{format(new Date(session.date), 'PPP')}</p>
           </div>
-          <Button onClick={() => navigate('/workouts')} className="w-full max-w-xs">Back to workouts</Button>
+          <div className="flex items-center gap-3">
+            <div className="text-sm text-[var(--text-secondary)]">Elapsed</div>
+            <div className="rounded-full bg-[var(--surface)] px-4 py-2 text-sm font-mono">{Math.floor(elapsed/60).toString().padStart(2,'0')}:{(elapsed%60).toString().padStart(2,'0')}</div>
+            <Button onClick={() => navigate('/workouts')} className="w-full max-w-xs">Back to workouts</Button>
+          </div>
         </div>
 
         <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
@@ -536,9 +640,10 @@ export function WorkoutSession() {
               <textarea
                 id="session-notes"
                 className="input-surface h-40 w-full rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4 text-[var(--text-primary)] outline-none transition focus:border-[var(--accent)]"
-                defaultValue={session.notes || ''}
+                value={session.notes || ''}
+                onChange={(e) => setSession((s) => ({ ...s, notes: e.target.value }))}
                 onBlur={saveNotes}
-                placeholder="Write notes, cues, and progress from this workout."
+                placeholder="How are you feeling today?"
               />
             </Card>
 
@@ -546,8 +651,11 @@ export function WorkoutSession() {
               <Card key={exercise.id} className="space-y-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <p className="text-lg font-semibold text-white">{exercise.exercise.name}</p>
-                    <p className="text-sm text-[var(--text-secondary)]">{exercise.exercise.muscle_group}</p>
+                    <p className="text-lg font-semibold text-white">{exercise.exercise.name} <span className="text-sm text-[var(--text-secondary)]">· {exercise.exercise.muscle_group}</span></p>
+                    <div className="flex gap-2 mt-1">
+                      <span className="px-2 py-1 rounded-full bg-[var(--surface-2)] text-xs text-[var(--text-secondary)]">{exercise.exercise.equipment || 'Bodyweight'}</span>
+                      <span className="text-sm text-[var(--text-secondary)]">{exercise.last_session ? `Last: ${exercise.last_session}` : ''}</span>
+                    </div>
                   </div>
                   <div className="flex gap-2">
                     <Button disabled={saving} onClick={() => addSet(exercise)}>Add set</Button>
@@ -555,20 +663,33 @@ export function WorkoutSession() {
                   </div>
                 </div>
                 <div className="space-y-3">
-                  {exercise.sets?.length ? exercise.sets.map((set) => (
-                    <div key={set.id} className="grid grid-cols-[1fr_auto_auto] gap-3 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4 text-sm text-[var(--text-primary)]">
-                      <div>{set.set_number}. {set.reps} reps</div>
-                      <div>{set.weight_kg} kg</div>
-                      <div>{set.rpe ? `RPE ${set.rpe}` : 'RPE —'}</div>
+                  {exercise.sets?.length ? (
+                    <div className="grid gap-2">
+                      <div className="grid grid-cols-12 gap-2 text-xs text-[var(--text-secondary)] px-2">
+                        <div className="col-span-1">#</div>
+                        <div className="col-span-3">Reps</div>
+                        <div className="col-span-3">Weight</div>
+                        <div className="col-span-3">RPE</div>
+                        <div className="col-span-2">Done</div>
+                      </div>
+                      {exercise.sets.map((set) => (
+                        <div key={set.id} className={`grid grid-cols-12 gap-2 items-center rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-2 ${set.completed ? 'bg-green-600/20' : ''}`}>
+                          <div className="col-span-1">{set.set_number}</div>
+                          <div className="col-span-3"><input type="number" defaultValue={set.reps || ''} onChange={(e) => { const v = Number(e.target.value); setSession((s) => ({ ...s, session_exercises: s.session_exercises.map((ex) => ex.id === exercise.id ? ({ ...ex, sets: ex.sets.map((st) => st.id === set.id ? ({ ...st, reps: v }) : st) }) : ex) })); }} className="w-full rounded-md bg-[var(--surface)] p-2 text-sm" min="1" max="100" /></div>
+                          <div className="col-span-3"><input type="number" defaultValue={set.weight_kg || ''} onChange={(e) => { const v = Number(e.target.value); setSession((s) => ({ ...s, session_exercises: s.session_exercises.map((ex) => ex.id === exercise.id ? ({ ...ex, sets: ex.sets.map((st) => st.id === set.id ? ({ ...st, weight_kg: v }) : st) }) : ex) })); }} className="w-full rounded-md bg-[var(--surface)] p-2 text-sm" min="0" max="500" step="0.5" /></div>
+                          <div className="col-span-3"><input type="number" defaultValue={set.rpe || ''} onChange={(e) => { const v = Number(e.target.value); setSession((s) => ({ ...s, session_exercises: s.session_exercises.map((ex) => ex.id === exercise.id ? ({ ...ex, sets: ex.sets.map((st) => st.id === set.id ? ({ ...st, rpe: v }) : st) }) : ex) })); }} className="w-full rounded-md bg-[var(--surface)] p-2 text-sm" min="1" max="10" /></div>
+                          <div className="col-span-2 flex items-center gap-2"><input type="checkbox" defaultChecked={!!set.completed} onChange={() => handleSetComplete(exercise.id, set.id, set)} />{timers[exercise.id] && timers[exercise.id].running ? <div className="text-xs text-[var(--text-secondary)]">{timers[exercise.id].remaining}s</div> : null}</div>
+                        </div>
+                      ))}
                     </div>
-                  )) : <p className="text-[var(--text-secondary)]">No sets logged yet.</p>}
+                  ) : <p className="text-[var(--text-secondary)]">No sets logged yet.</p>}
                 </div>
               </Card>
             )) : (
               <Card>
                 <div className="space-y-4">
-                  <p className="text-lg font-semibold text-white">No exercises yet</p>
-                  <p className="text-[var(--text-secondary)]">Search the library and add movements to build your session.</p>
+                      <p className="text-lg font-semibold text-white">No exercises yet</p>
+                      <p className="text-[var(--text-secondary)]">Even Batman had his first training session. Start yours.</p>
                 </div>
               </Card>
             )}
@@ -596,7 +717,7 @@ export function WorkoutSession() {
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="font-semibold text-white">{exercise.name}</p>
-                      <p className="text-sm text-[var(--text-secondary)]">{exercise.muscle_group}</p>
+                      <p className="text-sm text-[var(--text-secondary)]">{exercise.muscle_group} · {exercise.equipment || 'Bodyweight'}</p>
                     </div>
                     <span className="rounded-full bg-[var(--surface-2)] px-3 py-1 text-xs uppercase tracking-[0.2em] text-[var(--text-secondary)]">Add</span>
                   </div>

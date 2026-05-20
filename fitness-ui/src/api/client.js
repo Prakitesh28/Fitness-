@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
+import { useEffect } from 'react';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://fitness-zodb.onrender.com';
 
@@ -7,6 +8,38 @@ const client = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
 });
+
+// Keepalive ping system to prevent Render cold starts
+let keepaliveInterval = null;
+
+const startKeepalive = () => {
+  // Clear any existing interval
+  if (keepaliveInterval) {
+    clearInterval(keepaliveInterval);
+  }
+
+  // Ping every 10 minutes (600000ms)
+  keepaliveInterval = setInterval(async () => {
+    try {
+      await client.get('/health');
+    } catch (error) {
+      // Silently fail - keepalive is best effort
+    }
+  }, 600000);
+
+  // Initial ping
+  client.get('/health').catch(() => {});
+};
+
+const stopKeepalive = () => {
+  if (keepaliveInterval) {
+    clearInterval(keepaliveInterval);
+    keepaliveInterval = null;
+  }
+};
+
+// Start keepalive when the module loads (in a React context, we'll start it in main.jsx)
+let isKeepaliveStarted = false;
 
 let isRefreshing = false;
 let queue = [];
@@ -59,5 +92,18 @@ client.interceptors.response.use(
     }
   }
 );
+
+// Function to manually start keepalive (to be called from main.jsx)
+export const startKeepalivePing = () => {
+  if (!isKeepaliveStarted) {
+    startKeepalive();
+    isKeepaliveStarted = true;
+  }
+};
+
+export const stopKeepalivePing = () => {
+  stopKeepalive();
+  isKeepaliveStarted = false;
+};
 
 export default client;
