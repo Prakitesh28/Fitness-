@@ -1150,6 +1150,7 @@ export default function App() {
         <Route path="/metrics" element={<Protected><Metrics /></Protected>} />
         <Route path="/nutrition" element={<Protected><Nutrition /></Protected>} />
         <Route path="/profile" element={<Protected><Profile /></Protected>} />
+        <Route path="/looks" element={<Protected><LooksMaxPage /></Protected>} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </BrowserRouter>
