@@ -5,32 +5,27 @@ export default {
   theme: {
     extend: {
       colors: {
-        brand: {
-          50: '#fdeeee',
-          100: '#f9d4d9',
-          300: '#e14b5a',
-          500: '#DC143C', // primary crimson
-          600: '#b30f31',
-          700: '#8a0b28',
+        crimson: {
+          DEFAULT: '#DC143C',   // Core cinematic red
+          dark: '#8B0000',      // Deep structural accent red
+          glow: 'rgba(220, 20, 60, 0.15)', // Light-bleed utility
         },
         panel: {
-          DEFAULT: '#0f1113', // deep charcoal
-          600: '#0b0c0d',
+          DEFAULT: 'rgba(5, 0, 0, 0.85)', // High-contrast transparent charcoal black
+          solid: '#0a0b0c',              // Fallback solid panel black
         },
         matte: {
-          DEFAULT: '#070708', // matte black
+          DEFAULT: '#000000',   // True pitch black void
         },
       },
       fontFamily: {
-        display: ['"VFC Fantomen"', 'ui-serif', 'Georgia', 'serif'],
-        body: ['Inter', 'Manrope', 'ui-sans-serif', 'system-ui'],
+        display: ['"VFC Fantomen"', 'Oswald', 'Impact', 'sans-serif'], 
+        sans: ['Inter', 'Manrope', 'system-ui', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'], // For tactical numbers
       },
       boxShadow: {
-        glow: '0 8px 30px rgba(220,20,60,0.18), 0 2px 6px rgba(0,0,0,0.6)',
-        'inner-soft': 'inset 0 1px 0 rgba(255,255,255,0.02)',
-      },
-      backdropBlur: {
-        xs: '4px',
+        glow: '0 8px 30px rgba(220, 20, 60, 0.25), 0 2px 6px rgba(0, 0, 0, 0.8)',
+        tactical: '0 10px 30px rgba(0, 0, 0, 0.9), inset 0 0 15px rgba(220, 20, 60, 0.05)',
       },
     },
   },
