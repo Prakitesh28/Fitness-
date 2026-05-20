@@ -64,6 +64,30 @@ const Spinner = ({ label }) => {
   );
 };
 
+const ColdStartOverlay = () => {
+  return (
+    <div className="fixed inset-0 bg-[var(--bg)] flex items-center justify-center z-50">
+      <div className="text-center space-y-6">
+        <div className="relative w-20 h-20">
+          <svg className="absolute inset-0" viewBox="0 0 24 24" stroke="var(--accent)" strokeWidth={2} fill="none" className="animate-pulse">
+            <path d="M4 6h16M4 12h16M4 18h16"/>
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center text-[var(--accent)] font-bold text-2xl">
+            <svg className="h-8 w-8 animate-pulse" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C9.8 6 4 7 4 10c0 2 4 3 8 3s8-1 8-3c0-3-5.8-4-8-8z"/>
+            </svg>
+          </div>
+        </div>
+        <h1 className="text-4xl font-semibold text-[var(--accent)]">Waking up the Batcomputer...</h1>
+        <p className="text-[var(--text-secondary)] max-w-xl">First load may take up to 15 seconds on free tier</p>
+        <div className="w-64 h-2 bg-[var(--surface)] rounded-full overflow-hidden">
+          <div className="h-full w-[0%] bg-[var(--accent)] transition-[width] duration-15000 ease-linear" id="coldStartProgress"></div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 function Protected({ children }) {
   const { token, loading } = useAuthStore();
   if (loading) return <div className="min-h-screen bg-[var(--bg)] p-10"><Spinner label="Restoring session..." /></div>;
@@ -1131,15 +1155,63 @@ export function Profile() {
 
 export default function App() {
   const { hydrate, isDark, setTheme } = useAuthStore();
+  const [showColdStart, setShowColdStart] = useState(false);
 
   useEffect(() => {
     hydrate();
     setTheme(isDark);
   }, []);
 
+  // Update the axios interceptor to show cold start overlay
+  useEffect(() => {
+    // Store the original response interceptor
+    const { interceptors } = require('axios');
+    const originalUse = interceptors.response.use;
+
+    // Add request tracking for cold start detection
+    let requestTimer = null;
+
+    // Request interceptor to start timer
+    interceptors.request.use((config) => {
+      requestTimer = setTimeout(() => {
+        setShowColdStart(true);
+      }, 3000); // Show overlay after 3 seconds
+      return config;
+    }, (error) => {
+      if (requestTimer) {
+        clearTimeout(requestTimer);
+        requestTimer = null;
+      }
+      return Promise.reject(error);
+    });
+
+    // Response interceptor to hide overlay
+    interceptors.response.use(
+      (response) => {
+        if (requestTimer) {
+          clearTimeout(requestTimer);
+          requestTimer = null;
+        }
+        setShowColdStart(false);
+        return response;
+      },
+      (error) => {
+        if (requestTimer) {
+          clearTimeout(requestTimer);
+          requestTimer = null;
+        }
+        setShowColdStart(false);
+        return Promise.reject(error);
+      }
+    );
+
+    // Keepalive ping is started in main.jsx
+  }, []);
+
   return (
     <BrowserRouter>
       <Toaster position="top-right" />
+      {showColdStart && <ColdStartOverlay />}
       <Routes>
         <Route path="/login" element={<AuthPage mode="login" />} />
         <Route path="/register" element={<AuthPage mode="register" />} />

@@ -30,6 +30,7 @@ app.include_router(metrics.router, prefix="/metrics", tags=["metrics"])
 app.include_router(nutrition.router, prefix="/nutrition", tags=["nutrition"])
 app.include_router(stats.router, prefix="/stats", tags=["stats"])
 app.include_router(coach.router, prefix="/coach", tags=["coach"])
+app.include_router(looks.router, prefix="/looks", tags=["looksmax"])
 
 @app.on_event("startup")
 async def ensure_tables_exist() -> None:
