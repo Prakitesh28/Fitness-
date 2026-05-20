@@ -3,7 +3,7 @@ export default function Card({ className, children }) {
   return (
     <div
       className={clsx(
-        'rounded-[2rem] border border-white/10 bg-white/10 p-4 shadow-xl shadow-slate-950/10 backdrop-blur-xl transition-colors duration-300 dark:border-slate-800/70 dark:bg-slate-900/70',
+        'rounded-[1.5rem] border border-[rgba(220,20,60,0.06)] bg-panel p-4 shadow-glow backdrop-blur-xs transition-colors duration-300',
         className
       )}
     >

@@ -1,5 +1,33 @@
 @import "tailwindcss";
 
-:root { color-scheme: light; }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Manrope:wght@300;400;600;700&display=swap');
+/* Note: "VFC Fantomen" should be added to the project or loaded by the user when available. */
+
+:root {
+	--crimson: #DC143C;
+	--crimson-dark: #b30f31;
+	--panel: #0f1113;
+	--matte: #070708;
+	--glow: rgba(220,20,60,0.16);
+	color-scheme: dark;
+}
+
 .dark { color-scheme: dark; }
-body { @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100; }
+
+body {
+	background-color: var(--matte);
+	color: #e6edf0; /* subdued light text */
+	font-family: Inter, Manrope, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
+
+/* Global helper for cinematic red glow */
+.glow {
+	box-shadow: 0 8px 30px var(--glow), 0 2px 6px rgba(0,0,0,0.6);
+}
+
+/* Card chrome */
+.panel {
+	background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+	border: 1px solid rgba(220,20,60,0.06);
+	backdrop-filter: blur(8px);
+}
