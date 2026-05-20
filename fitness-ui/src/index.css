@@ -31,3 +31,22 @@ body {
 	border: 1px solid rgba(220,20,60,0.06);
 	backdrop-filter: blur(8px);
 }
+
+/* Decorative Batman watermark centered behind the UI (low opacity, non-interactive) */
+body::before {
+	content: '';
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	width: 60vw;
+	height: 60vw;
+	background-image: url('https://upload.wikimedia.org/wikipedia/commons/1/1b/Batman_logo.svg');
+	background-repeat: no-repeat;
+	background-position: center;
+	background-size: contain;
+	opacity: 0.04;
+	z-index: -1;
+	pointer-events: none;
+	filter: invert(1) sepia(1) saturate(5) hue-rotate(5deg);
+}
