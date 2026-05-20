@@ -6,7 +6,7 @@ const Input = forwardRef(function Input({ className, ...props }, ref) {
     <input
       ref={ref}
       className={clsx(
-        'w-full rounded-2xl border border-slate-700/80 bg-slate-950/80 px-4 py-3 text-sm text-slate-100 outline-none transition duration-200 placeholder:text-slate-500 focus:border-brand-400 focus:ring-2 focus:ring-brand-500/20',
+        'input-surface w-full rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none transition duration-200 placeholder:text-[var(--text-secondary)] focus:border-[var(--accent)] focus:ring-2 focus:ring-[rgba(220,20,60,0.12)]',
         className
       )}
       {...props}

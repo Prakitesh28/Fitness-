@@ -1,327 +1,174 @@
-@import "tailwindcss";
-
-/* Core design fonts: Inter/Manrope for interfaces, JetBrains Mono for metrics telemetry */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Manrope:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
+﻿@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-    /* Premium Batman Arkham-Inspired Palette */
-    --crimson: #DC143C;
-    --crimson-dark: #8B0000;
-    --panel-bg: rgba(5, 0, 0, 0.85); 
-    --matte: #000000;
-    --glow: rgba(220, 20, 60, 0.25);
-    --border-accent: rgba(220, 20, 60, 0.4);
-    --text-muted: #6b7280;
-    --text-bright: #f3f4f6;
-    color-scheme: dark;
+  --bg: #09090f;
+  --surface: #0f0f1a;
+  --surface-2: #141420;
+  --border: rgba(220,20,60,0.25);
+  --border-strong: rgba(220,20,60,0.5);
+  --accent: #DC143C;
+  --accent-glow: rgba(220,20,60,0.15);
+  --accent-dim: rgba(220,20,60,0.08);
+  --text-primary: #ffffff;
+  --text-secondary: #7a7a9a;
+  --text-accent: #DC143C;
+  color-scheme: dark;
 }
 
-.dark { color-scheme: dark; }
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
 
 body {
-    /* Deep cinematic radial gradient fading out to pitch black edges */
-    background: radial-gradient(circle at 50% 0%, #3a0005 0%, #0a0000 50%, #000000 100%);
-    background-color: var(--matte);
-    background-attachment: fixed;
-    color: var(--text-bright);
-    font-family: Inter, Manrope, system-ui, -apple-system, sans-serif;
-    min-height: 100vh;
-    
-    /* Tactical grid background overlay */
-    background-image:
-        linear-gradient(rgba(220, 20, 60, 0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(220, 20, 60, 0.03) 1px, transparent 1px);
-    background-size: 40px 40px;
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: Inter, system-ui, sans-serif;
 }
 
-/* Aggressive, industrial layout headers */
-h1, h2, h3, .heading-bat {
-    font-family: "VFC Fantomen", Impact, "Inter", sans-serif;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-/* Monospace telemetry counters (Batcomputer terminal styling) */
-.metric-value {
-    font-family: 'JetBrains Mono', monospace;
-    color: var(--crimson);
-    text-shadow: 0 0 10px var(--glow);
-    font-size: 2rem;
-    font-weight: 700;
-}
-
-/* Global tactical shadows */
-.glow {
-    box-shadow: 0 8px 30px var(--glow), 0 2px 6px rgba(0,0,0,0.8);
-}
-
-/* Glassmorphism Panel Structures */
-.panel {
-    background: var(--panel-bg);
-    border: 1px solid rgba(220, 20, 60, 0.15);
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
-    border-bottom: 2px solid var(--crimson-dark); /* Structural bottom plate accent */
-    border-radius: 4px; /* Hard tactical edges instead of rounded profiles */
-    backdrop-filter: blur(12px);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 10px 30px rgba(0,0,0,0.7);
-}
-
-/* Interactive card focus states */
-.panel:hover {
-    border-color: var(--border-accent);
-    box-shadow: 0 0 20px var(--glow), inset 0 0 15px rgba(220, 20, 60, 0.05);
-    transform: translateY(-2px);
-}
-
-/* Sidebar navigation protocols */
-.nav-link {
-    color: var(--text-muted);
-    transition: all 0.2s ease-in-out;
-    text-transform: uppercase;
-    letter-spacing: 0.15em;
-    font-size: 0.85rem;
-    border-left: 2px solid transparent;
-    padding-left: 1rem;
-    display: block;
-    margin-bottom: 1rem;
-}
-
-.nav-link:hover, .nav-link.active {
-    color: var(--text-bright);
-    border-left: 2px solid var(--crimson);
-    background: linear-gradient(90deg, rgba(220, 20, 60, 0.15), transparent);
-    text-shadow: 0 0 8px rgba(220, 20, 60, 0.4);
-}
-
-/* Command Actions / Buttons */
-.btn-bat {
-    background-color: transparent;
-    color: var(--crimson);
-    border: 1px solid var(--crimson);
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    font-size: 0.75rem;
-    font-weight: 700;
-    padding: 0.5rem 1.5rem;
-    border-radius: 2px;
-    transition: all 0.3s ease;
-    cursor: pointer;
-}
-
-.btn-bat:hover {
-    background-color: var(--crimson);
-    color: var(--matte);
-    box-shadow: 0 0 15px var(--glow);
-}
-
-/* Low-opacity color-dodge Bat emblem blend */
 body::before {
-    content: '';
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 80vw;
-    height: 80vw;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 283.46 283.46'%3E%3Cpath fill='%23DC143C' d='M141.73 56.69c-19.84 0-35.9 6.06-46.96 15.76-4.98-9.15-14.93-22.6-32.3-28.67 0 0 5.52 14.57 1.26 28.29-11.56 5.27-20.3 12.6-25.75 20.3C25.14 107.48 14.17 128.3 14.17 141.73c0 0 14.17-7.09 28.35-7.09 0 7.09-7.09 21.26-7.09 35.43h21.26c0-14.17 7.09-28.35 14.17-35.43 7.09 7.09 21.26 14.17 42.52 14.17 0 14.17-7.09 21.26-7.09 35.43h70.87c0-14.17-7.09-21.26-7.09-35.43 21.26 0 35.43-7.09 42.52-14.17 7.09 7.09 14.17 21.26 14.17 35.43h21.26c0-14.17-7.09-28.35-7.09-35.43 14.17 0 28.35 7.09 28.35 7.09 0-13.43-10.97-34.25-23.75-48.66-5.45-7.7-14.19-15.03-25.75-20.3-4.26-13.72 1.26-28.29 1.26-28.29-17.37 6.06-27.32 19.52-32.3 28.67-11.06-9.7-27.12-15.76-46.96-15.76z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: center;
-    background-size: contain;
-    opacity: 0.03;
-    z-index: -1;
-    pointer-events: none;
-    mix-blend-mode: color-dodge;
+  content: '';
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 65vw;
+  height: 65vw;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 283.46 283.46'%3E%3Cpath fill='%23DC143C' d='M141.73 56.69c-19.84 0-35.9 6.06-46.96 15.76-4.98-9.15-14.93-22.6-32.3-28.67 0 0 5.52 14.57 1.26 28.29-11.56 5.27-20.3 12.6-25.75 20.3C25.14 107.48 14.17 128.3 14.17 141.73c0 0 14.17-7.09 28.35-7.09 0 7.09-7.09 21.26-7.09 35.43h21.26c0-14.17 7.09-28.35 14.17-35.43 7.09 7.09 21.26 14.17 42.52 14.17 0 14.17-7.09 21.26-7.09 35.43h70.87c0-14.17-7.09-21.26-7.09-35.43 21.26 0 35.43-7.09 42.52-14.17 7.09 7.09 14.17 21.26 14.17 35.43h21.26c0-14.17-7.09-28.35-7.09-35.43 14.17 0 28.35 7.09 28.35 7.09 0-13.43-10.97-34.25-23.75-48.66-5.45-7.7-14.19-15.03-25.75-20.3-4.26-13.72 1.26-28.29 1.26-28.29-17.37 6.06-27.32 19.52-32.3 28.67-11.06-9.7-27.12-15.76-46.96-15.76z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  opacity: 0.06;
+  z-index: -1;
+  pointer-events: none;
 }
 
-/* Subtle monitor scanline matrix */
-body::after {
-    content: " ";
-    display: block;
-    position: fixed;
-    top: 0; left: 0; bottom: 0; right: 0;
-    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.2) 50%);
-    background-size: 100% 4px;
-    z-index: 999;
-    pointer-events: none;
-    opacity: 0.35;
+h1,
+h2,
+h3,
+.logo,
+.nav-brand {
+  font-family: 'Bebas Neue', system-ui, sans-serif;
+  letter-spacing: 0.05em;
 }
-/* ===== PREMIUM BATCOMPUTER UI ENHANCEMENTS ===== */
 
-.heading-bat {
-    font-size: clamp(1.8rem, 4vw, 3.8rem);
-    font-weight: 800;
-    line-height: 0.95;
-    letter-spacing: 0.08em;
-    color: white;
-    text-shadow:
-        0 0 20px rgba(220,20,60,0.15),
-        0 0 40px rgba(220,20,60,0.08);
+.section-label,
+.sidebar-label,
+.chart-label,
+.modal-label,
+.label-small {
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.section-title,
+.chart-title,
+.title-accent {
+  color: var(--accent);
+  font-family: 'Bebas Neue', system-ui, sans-serif;
+}
+
+.metric-label {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
 }
 
 .metric-value {
-    font-size: clamp(2.2rem, 5vw, 4rem);
-    line-height: 1;
-    font-weight: 800;
-    letter-spacing: -0.04em;
+  color: var(--accent);
+  font-size: 2rem;
+  font-weight: 700;
 }
 
-.panel {
-    position: relative;
-    overflow: hidden;
-}
-
-.panel::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background:
-        linear-gradient(
-            135deg,
-            rgba(220,20,60,0.08),
-            transparent 30%
-        );
-    pointer-events: none;
-}
-
-.panel::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border: 1px solid rgba(255,255,255,0.03);
-    pointer-events: none;
-}
-
-.btn-bat {
-    position: relative;
-    overflow: hidden;
-}
-
-.btn-bat::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background:
-        linear-gradient(
-            90deg,
-            transparent,
-            rgba(255,255,255,0.08),
-            transparent
-        );
-    transform: translateX(-100%);
-    transition: transform .5s ease;
-}
-
-.btn-bat:hover::before {
-    transform: translateX(100%);
-}
-
-.nav-link {
-    position: relative;
-    border-radius: 6px;
-    padding-top: 0.9rem;
-    padding-bottom: 0.9rem;
-}
-
-.nav-link.active::after {
-    content: '';
-    position: absolute;
-    right: 10px;
-    width: 6px;
-    height: 6px;
-    border-radius: 999px;
-    background: var(--crimson);
-    box-shadow: 0 0 12px var(--crimson);
-}
-
-.recharts-default-tooltip {
-    background: rgba(0,0,0,0.92) !important;
-    border: 1px solid rgba(220,20,60,0.25) !important;
-    border-radius: 8px !important;
-    box-shadow: 0 0 20px rgba(220,20,60,0.15) !important;
-}
-
-.recharts-cartesian-axis-tick-value {
-    fill: rgba(255,255,255,0.55);
-    font-size: 12px;
-}
-
-.recharts-legend-item-text {
-    color: white !important;
+.metric-subtext {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
 }
 
 input,
 textarea,
 select {
-    transition: all .2s ease !important;
-}
-
-input:hover,
-textarea:hover,
-select:hover {
-    border-color: rgba(220,20,60,0.35) !important;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
 }
 
 input:focus,
 textarea:focus,
 select:focus {
-    transform: translateY(-1px);
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px rgba(220,20,60,0.12);
 }
 
-::-webkit-scrollbar-track {
-    background: rgba(255,255,255,0.02);
+button,
+.btn,
+.button-primary,
+.button-secondary {
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  border-radius: 20px;
+  padding: 0.65rem 1rem;
+  transition: all 0.25s ease;
+  cursor: pointer;
 }
 
-.hero-panel {
-    position: relative;
-    overflow: hidden;
-    padding: 3rem;
+button:hover,
+.btn:hover,
+.button-primary:hover,
+.button-secondary:hover {
+  background: var(--accent);
+  color: #fff;
 }
 
-.hero-panel::before {
-    content: '';
-    position: absolute;
-    width: 500px;
-    height: 500px;
-    top: -250px;
-    right: -100px;
-    background: radial-gradient(
-        circle,
-        rgba(220,20,60,0.18),
-        transparent 70%
-    );
-    pointer-events: none;
+.card,
+.chart-card,
+.modal-surface,
+.input-surface,
+.panel-surface {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
 }
 
-.hero-panel::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background:
-        linear-gradient(
-            135deg,
-            rgba(255,255,255,0.02),
-            transparent
-        );
-    pointer-events: none;
+.card:hover,
+.chart-card:hover,
+.card-highlight:hover {
+  box-shadow: 0 0 20px var(--accent-glow);
+  border-color: var(--border-strong);
 }
 
-.tactical-label {
-    text-transform: uppercase;
-    letter-spacing: 0.3em;
-    font-size: 0.72rem;
-    color: rgba(220,20,60,0.72);
-    font-weight: 700;
+.card-highlight {
+  border-color: var(--border-strong);
+  box-shadow: 0 0 24px var(--accent-glow);
 }
 
-.telemetry-grid {
-    display: grid;
-    gap: 1.25rem;
-    grid-template-columns: repeat(auto-fit,minmax(220px,1fr));
+.link-accent {
+  color: var(--accent);
 }
 
-.glow-red {
-    box-shadow:
-        0 0 25px rgba(220,20,60,0.18),
-        0 0 80px rgba(220,20,60,0.08);
+.table-accent th {
+  background: rgba(220,20,60,0.12);
+  color: var(--text-primary);
+}
+
+.table-accent tr:nth-child(even) {
+  background: var(--surface-2);
+}
+
+.modal-surface {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+}
+
+::selection {
+  background: rgba(220,20,60,0.2);
 }
