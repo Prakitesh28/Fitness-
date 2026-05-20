@@ -33,23 +33,19 @@ body {
 }
 
 /* Decorative Batman watermark centered behind the UI (low opacity, non-interactive) */
-@media (min-width: 1024px) {
-	body::before {
-		content: '';
-		position: fixed;
-		top: 50%;
-		left: 50%;
-		transform: translate(-50%, -50%);
-		width: 60vw;
-		height: 60vw;
-		background-image: url('https://upload.wikimedia.org/wikipedia/commons/1/1b/Batman_logo.svg');
-		background-repeat: no-repeat;
-		background-position: center;
-		background-size: contain;
-		opacity: 0.06; /* slightly more visible */
-		z-index: -1;
-		pointer-events: none;
-		mix-blend-mode: overlay;
-		filter: none;
-	}
+body::after {
+  content: '';
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 70vw;
+  height: 70vw;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 500 300'%3E%3Cpath fill='%23f5c518' d='M250,30 C250,30 200,80 150,70 C100,60 60,100 40,130 C20,160 0,200 0,200 L60,180 C60,180 40,220 50,250 C60,280 100,270 120,250 C140,270 160,290 180,280 C200,270 210,250 210,250 L250,260 L290,250 C290,250 300,270 320,280 C340,290 360,270 380,250 C400,270 440,280 450,250 C460,220 440,180 440,180 L500,200 C500,200 480,160 460,130 C440,100 400,60 350,70 C300,80 250,30 250,30 Z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  opacity: 0.15;
+  z-index: 9999;
+  pointer-events: none;
 }
