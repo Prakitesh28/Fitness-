@@ -1,51 +1,147 @@
 @import "tailwindcss";
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Manrope:wght@300;400;600;700&display=swap');
+/* Added JetBrains Mono for that high-tech telemetry/terminal feel on numbers */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Manrope:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
 /* Note: "VFC Fantomen" should be added to the project or loaded by the user when available. */
 
 :root {
-	--crimson: #DC143C;
-	--crimson-dark: #b30f31;
-	--panel: #0f1113;
-	--matte: #070708;
-	--glow: rgba(220,20,60,0.16);
-	color-scheme: dark;
+    /* Gritty "The Batman" Palette */
+    --crimson: #DC143C;
+    --crimson-dark: #8B0000;
+    --panel: #0a0b0c; /* Deeper black for a tactical feel */
+    --matte: #030304; /* True dark void */
+    --glow: rgba(220, 20, 60, 0.25);
+    --border-accent: rgba(220, 20, 60, 0.4);
+    --text-muted: #6b7280;
+    --text-bright: #f3f4f6;
+    color-scheme: dark;
 }
 
 .dark { color-scheme: dark; }
 
 body {
-	background-color: var(--matte);
-	color: #e6edf0; /* subdued light text */
-	font-family: Inter, Manrope, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    background-color: var(--matte);
+    color: var(--text-bright);
+    font-family: Inter, Manrope, system-ui, -apple-system, sans-serif;
+    
+    /* Tactical grid background */
+    background-image:
+        linear-gradient(rgba(220, 20, 60, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(220, 20, 60, 0.03) 1px, transparent 1px);
+    background-size: 30px 30px;
+}
+
+/* Headings get an aggressive, heavy look */
+h1, h2, h3, .heading-bat {
+    font-family: "VFC Fantomen", Impact, "Inter", sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Monospace for data metrics (Batcomputer telemetry style) */
+.metric-value {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--crimson);
+    text-shadow: 0 0 10px var(--glow);
+    font-size: 2rem;
+    font-weight: 700;
 }
 
 /* Global helper for cinematic red glow */
 .glow {
-	box-shadow: 0 8px 30px var(--glow), 0 2px 6px rgba(0,0,0,0.6);
+    box-shadow: 0 8px 30px var(--glow), 0 2px 6px rgba(0,0,0,0.8);
 }
 
-/* Card chrome */
+/* Card chrome - Tactical & Sharp */
 .panel {
-	background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-	border: 1px solid rgba(220,20,60,0.06);
-	backdrop-filter: blur(8px);
+    background: linear-gradient(180deg, rgba(20, 20, 22, 0.8), rgba(10, 10, 12, 0.9));
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 2px solid var(--crimson-dark); /* Heavy bottom accent */
+    border-radius: 4px; /* Sharper edges, less friendly */
+    backdrop-filter: blur(12px);
+    transition: all 0.3s ease;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 }
 
-/* Decorative Batman watermark centered behind the UI (low opacity, non-interactive) */
+/* Interactive panels get a glowing red border on hover */
+.panel:hover {
+    border-color: var(--border-accent);
+    box-shadow: 0 0 15px var(--glow), inset 0 0 20px rgba(220,20,60,0.05);
+    transform: translateY(-2px);
+}
+
+/* Sidebar navigation links */
+.nav-link {
+    color: var(--text-muted);
+    transition: all 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 0.85rem;
+    border-left: 2px solid transparent;
+    padding-left: 1rem;
+    display: block;
+    margin-bottom: 1rem;
+}
+
+.nav-link:hover, .nav-link.active {
+    color: var(--text-bright);
+    border-left: 2px solid var(--crimson);
+    background: linear-gradient(90deg, rgba(220, 20, 60, 0.1), transparent);
+}
+
+/* Action Buttons */
+.btn-bat {
+    background-color: transparent;
+    color: var(--crimson);
+    border: 1px solid var(--crimson);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.5rem 1.5rem;
+    border-radius: 2px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.btn-bat:hover {
+    background-color: var(--crimson);
+    color: var(--matte);
+    box-shadow: 0 0 15px var(--glow);
+}
+
+/* Decorative Batman watermark - Updated to Crimson with Light Bleed */
 body::before {
-  content: '';
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 70vw;
-  height: 70vw;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 283.46 283.46'%3E%3Cpath fill='%23f5c518' d='M141.73 56.69c-19.84 0-35.9 6.06-46.96 15.76-4.98-9.15-14.93-22.6-32.3-28.67 0 0 5.52 14.57 1.26 28.29-11.56 5.27-20.3 12.6-25.75 20.3C25.14 107.48 14.17 128.3 14.17 141.73c0 0 14.17-7.09 28.35-7.09 0 7.09-7.09 21.26-7.09 35.43h21.26c0-14.17 7.09-28.35 14.17-35.43 7.09 7.09 21.26 14.17 42.52 14.17 0 14.17-7.09 21.26-7.09 35.43h70.87c0-14.17-7.09-21.26-7.09-35.43 21.26 0 35.43-7.09 42.52-14.17 7.09 7.09 14.17 21.26 14.17 35.43h21.26c0-14.17-7.09-28.35-7.09-35.43 14.17 0 28.35 7.09 28.35 7.09 0-13.43-10.97-34.25-23.75-48.66-5.45-7.7-14.19-15.03-25.75-20.3-4.26-13.72 1.26-28.29 1.26-28.29-17.37 6.06-27.32 19.52-32.3 28.67-11.06-9.7-27.12-15.76-46.96-15.76z'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: contain;
-  opacity: 0.08;
-  z-index: -1;
-  pointer-events: none;
+    content: '';
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80vw;
+    height: 80vw;
+    /* Replaced %23f5c518 (Yellow) with %23DC143C (Crimson) in the SVG fill */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 283.46 283.46'%3E%3Cpath fill='%23DC143C' d='M141.73 56.69c-19.84 0-35.9 6.06-46.96 15.76-4.98-9.15-14.93-22.6-32.3-28.67 0 0 5.52 14.57 1.26 28.29-11.56 5.27-20.3 12.6-25.75 20.3C25.14 107.48 14.17 128.3 14.17 141.73c0 0 14.17-7.09 28.35-7.09 0 7.09-7.09 21.26-7.09 35.43h21.26c0-14.17 7.09-28.35 14.17-35.43 7.09 7.09 21.26 14.17 42.52 14.17 0 14.17-7.09 21.26-7.09 35.43h70.87c0-14.17-7.09-21.26-7.09-35.43 21.26 0 35.43-7.09 42.52-14.17 7.09 7.09 14.17 21.26 14.17 35.43h21.26c0-14.17-7.09-28.35-7.09-35.43 14.17 0 28.35 7.09 28.35 7.09 0-13.43-10.97-34.25-23.75-48.66-5.45-7.7-14.19-15.03-25.75-20.3-4.26-13.72 1.26-28.29 1.26-28.29-17.37 6.06-27.32 19.52-32.3 28.67-11.06-9.7-27.12-15.76-46.96-15.76z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    opacity: 0.04;
+    z-index: -1;
+    pointer-events: none;
+    mix-blend-mode: color-dodge; /* Makes it look like light bleeding out of the darkness */
+}
+
+/* Subtle CRT Scanline overlay for that Batcomputer monitor effect */
+body::after {
+    content: " ";
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+    background-size: 100% 4px;
+    z-index: 999;
+    pointer-events: none;
+    opacity: 0.4;
 }
