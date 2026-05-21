@@ -6,7 +6,7 @@ import json
 
 from app.database import get_db
 from app.models import looks as models
-from app.models.users import User
+from app.models import User
 from app.routers.auth import get_current_active_user
 from app.schemas import looks as schemas
 
