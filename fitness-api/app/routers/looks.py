@@ -6,7 +6,7 @@ import json
 
 from app.database import get_db
 from app.models import looks as models
-from app.models.user import user
+from app.models.users import User
 from app.routers.auth import get_current_active_user
 from app.schemas import looks as schemas
 
@@ -18,7 +18,7 @@ router = APIRouter(tags=["looksmax"])
 def create_skin_log(
     skin_log: schemas.SkinLogCreate,
     db: Session = Depends(get_db),
-    current_user: user = Depends(get_current_active_user)
+    current_user:   User = Depends(get_current_active_user)
 ):
     db_skin_log = models.SkinLog(**skin_log.dict(), user_id=current_user.id)
     db.add(db_skin_log)
@@ -31,7 +31,7 @@ def create_skin_log(
 def read_skin_logs(
     days: Optional[int] = 30,
     db: Session = Depends(get_db),
-    current_user: user = Depends(get_current_active_user)
+    current_user:   User = Depends(get_current_active_user)
 ):
     from datetime import timedelta
     start_date = datetime.utcnow() - timedelta(days=days)
@@ -47,7 +47,7 @@ def read_skin_logs(
 def create_hair_log(
     hair_log: schemas.HairLogCreate,
     db: Session = Depends(get_db),
-    current_user: user = Depends(get_current_active_user)
+    current_user:   User = Depends(get_current_active_user)
 ):
     db_hair_log = models.HairLog(**hair_log.dict(), user_id=current_user.id)
     db.add(db_hair_log)
@@ -60,7 +60,7 @@ def create_hair_log(
 def read_hair_logs(
     days: Optional[int] = 30,
     db: Session = Depends(get_db),
-    current_user: user = Depends(get_current_active_user)
+    current_user:   User = Depends(get_current_active_user)
 ):
     from datetime import timedelta
     start_date = datetime.utcnow() - timedelta(days=days)
@@ -76,7 +76,7 @@ def read_hair_logs(
 def create_jawline_log(
     jawline_log: schemas.JawlineLogCreate,
     db: Session = Depends(get_db),
-    current_user: user = Depends(get_current_active_user)
+    current_user:   User = Depends(get_current_active_user)
 ):
     db_jawline_log = models.JawlineLog(**jawline_log.dict(), user_id=current_user.id)
     db.add(db_jawline_log)
@@ -89,7 +89,7 @@ def create_jawline_log(
 def read_jawline_logs(
     days: Optional[int] = 30,
     db: Session = Depends(get_db),
-    current_user: user = Depends(get_current_active_user)
+    current_user:   User = Depends(get_current_active_user)
 ):
     from datetime import timedelta
     start_date = datetime.utcnow() - timedelta(days=days)
@@ -105,7 +105,7 @@ def read_jawline_logs(
 def create_looks_goal(
     goal: schemas.LooksGoalCreate,
     db: Session = Depends(get_db),
-    current_user: user = Depends(get_current_active_user)
+    current_user:   User = Depends(get_current_active_user)
 ):
     db_goal = models.LooksGoal(**goal.dict(), user_id=current_user.id)
     db.add(db_goal)
@@ -117,7 +117,7 @@ def create_looks_goal(
 @router.get("/goals", response_model=List[schemas.LooksGoal])
 def read_looks_goals(
     db: Session = Depends(get_db),
-    current_user: user = Depends(get_current_active_user)
+    current_user:   User = Depends(get_current_active_user)
 ):
     goals = db.query(models.LooksGoal).filter(
         models.LooksGoal.user_id == current_user.id
@@ -130,7 +130,7 @@ def update_looks_goal(
     goal_id: int,
     goal_update: schemas.LooksGoalUpdate,
     db: Session = Depends(get_db),
-    current_user: user = Depends(get_current_active_user)
+    current_user:   User = Depends(get_current_active_user)
 ):
     db_goal = db.query(models.LooksGoal).filter(
         models.LooksGoal.id == goal_id,
@@ -152,7 +152,7 @@ def update_looks_goal(
 @router.get("/checklist/today", response_model=schemas.LooksChecklist)
 def read_today_checklist(
     db: Session = Depends(get_db),
-    current_user: user = Depends(get_current_active_user)
+    current_user:   User = Depends(get_current_active_user)
 ):
     today = date.today()
     checklist = db.query(models.LooksChecklist).filter(
@@ -202,7 +202,7 @@ def read_today_checklist(
 def update_today_checklist(
     checklist_update: schemas.LooksChecklistUpdate,
     db: Session = Depends(get_db),
-    current_user: user = Depends(get_current_active_user)
+    current_user:   User = Depends(get_current_active_user)
 ):
     today = date.today()
     db_checklist = db.query(models.LooksChecklist).filter(
@@ -243,7 +243,7 @@ def update_today_checklist(
 @router.get("/stats", response_model=schemas.LooksStats)
 def get_looks_stats(
     db: Session = Depends(get_db),
-    current_user: user = Depends(get_current_active_user)
+    current_user:   User = Depends(get_current_active_user)
 ):
     from datetime import timedelta, date
 
