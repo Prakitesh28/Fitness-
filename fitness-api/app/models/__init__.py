@@ -68,6 +68,7 @@ class Exercise(Base, AsyncAttrs):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
     muscle_group = Column(Enum(MuscleGroup), nullable=False)
     equipment_type = Column(Enum(EquipmentType), nullable=False)
 

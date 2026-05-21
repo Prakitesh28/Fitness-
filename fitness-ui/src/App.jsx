@@ -1224,6 +1224,8 @@ export default function App() {
         <Route path="/profile" element={<Protected><Profile /></Protected>} />
         <Route path="/looks" element={<Protected><LooksMaxPage /></Protected>} />
         <Route path="/templates" element={<Protected><TemplatesPage /></Protected>} />
+        <Route path="/quicklog" element={<Protected><QuickLogPage /></Protected>} />
+        <Route path="/exercises" element={<Protected><ExerciseLibraryPage /></Protected>} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </BrowserRouter>

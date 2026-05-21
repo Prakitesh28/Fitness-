@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useAuthStore } from '../../store/authStore';
 
-const links = ['/dashboard', '/workouts', '/templates', '/metrics', '/nutrition', '/profile'];
+const links = ['/dashboard', '/workouts', '/templates', '/exercises', '/quicklog', '/metrics', '/nutrition', '/profile'];
 
 export default function Navbar({ onToggleSidebar } ) {
   const { logout, isDark, setTheme, user } = useAuthStore();

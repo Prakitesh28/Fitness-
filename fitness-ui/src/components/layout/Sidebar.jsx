@@ -4,6 +4,8 @@ const links = [
   '/dashboard',
   '/workouts',
   '/templates',
+  '/exercises',
+  '/quicklog',
   '/metrics',
   '/nutrition',
   '/profile',

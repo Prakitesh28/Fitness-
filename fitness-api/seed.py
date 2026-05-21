@@ -198,6 +198,7 @@ async def seed_exercises() -> None:
         for exercise_data in EXERCISES:
             exercise = Exercise(
                 name=exercise_data["name"],
+                description=f"{exercise_data['name']} exercise",
                 muscle_group=exercise_data["muscle_group"],
                 equipment_type=exercise_data["equipment_type"]
             )

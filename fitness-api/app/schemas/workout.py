@@ -6,6 +6,7 @@ from app.schemas.user import UserResponse
 class ExerciseBase(BaseModel):
     id: int
     name: str
+    description: Optional[str] = None
     muscle_group: str
     equipment_type: str
 
@@ -50,11 +51,13 @@ class WorkoutSessionResponse(WorkoutSessionBase):
 
 class ExerciseCreate(BaseModel):
     name: str
+    description: Optional[str] = None
     muscle_group: str
     equipment_type: str
 
 class ExerciseUpdate(BaseModel):
     name: Optional[str] = None
+    description: Optional[str] = None
     muscle_group: Optional[str] = None
     equipment_type: Optional[str] = None
 
