@@ -461,8 +461,6 @@ export default function LooksMaxPage() {
         />
       )}
     </div>
-
-      {/* Create Template Modal */}
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Create Workout Template">
         <form className="space-y-6" onSubmit={handleSubmit(onCreateTemplate)}>
           <div className="grid gap-4 sm:grid-cols-2">

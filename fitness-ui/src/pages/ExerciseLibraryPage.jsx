@@ -11,6 +11,8 @@ import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Trash2, Plus, Edit2 } from 'lucide-react';
+import { useMemo } from 'react';
+import Modal from '../components/ui/Modal';
 
 export function ExerciseLibraryPage() {
   const navigate = useNavigate();
@@ -400,22 +402,26 @@ export function ExerciseLibraryPage() {
             <p className="font-semibold text-white mb-2">Equipment Type</p>
             <div className="grid gap-2 sm:grid-cols-2">
               {[
-                {value: 'barbell', label: 'Barbell'},
-                {value: 'dumbbell', label: 'Dumbbell'},
-                {value: 'machine', label: 'Machine'},
-                {value: 'bodyweight', label: 'Bodyweight'},
-                {value: 'kettlebell', label: 'Kettlebell'},
-                {value: 'other', label: 'Other'}
-              ].map((equip) => (
-                <label key={equip.value} className="flex items-center gap-3">
+                { value: 'barbell', label: 'Barbell' },
+                { value: 'dumbbell', label: 'Dumbbell' },
+                { value: 'machine', label: 'Machine' },
+                { value: 'bodyweight', label: 'Bodyweight' },
+                { value: 'kettlebell', label: 'Kettlebell' },
+                { value: 'other', label: 'Other' },
+              ].map((group) => (
+                <label
+                  key={group.value}
+                  className="flex items-center gap-3"
+                >
                   <input
                     type="radio"
-                    value={equip.value}
-                    checked={register('equipment_type').value === equip.value}
-                    onChange={() => {}}
-                    className="h-4 w-4 text-[var(--accent)] rounded-border"
+                    value={group.value}
+                    {...register('equipment_type')}
+                    className="h-4 w-4 rounded-border text-[var(--accent)]"
                   />
-                  <span className="text-[var(--text-primary)]">{equip.label}</span>
+                  <span className="text-[var(--text-primary)]">
+                    {group.label}
+                  </span>
                 </label>
               ))}
             </div>
