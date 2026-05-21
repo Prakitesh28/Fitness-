@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 const links = [
   '/dashboard',
   '/workouts',
+  '/templates',
   '/metrics',
   '/nutrition',
   '/profile',

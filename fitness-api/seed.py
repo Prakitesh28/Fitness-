@@ -1,10 +1,11 @@
 """
-Seed script to populate the exercises table with 50 exercises across Push/Pull/Legs/Core.
+Seed script to populate the exercises table with 50 exercises across Push/Pull/Legs/Core
+and seed global workout templates.
 """
 import asyncio
 from app.database import AsyncSessionLocal, engine
 from sqlalchemy import select
-from app.models import Base, Exercise, MuscleGroup, EquipmentType
+from app.models import Base, Exercise, MuscleGroup, EquipmentType, Template
 
 # List of exercises to seed
 EXERCISES = [
@@ -96,6 +97,90 @@ EXERCISES = [
     {"name": "Kettlebell Windmill", "muscle_group": MuscleGroup.CORE, "equipment_type": EquipmentType.KETTLEBELL},
 ]
 
+# Global templates data for seeding
+GLOBAL_TEMPLATES = [
+    {
+        "name": "PPL Push A",
+        "type": "ppl",
+        "description": "Push day focusing on chest, shoulders, and triceps",
+        "is_global": True,
+        "exercises": ["Barbell Bench Press", "Barbell Overhead Press", "Dumbbell Incline Bench Press",
+                   "Triceps Pushdown", "Dumbbell Lateral Raise"]
+    },
+    {
+        "name": "PPL Pull A",
+        "type": "ppl",
+        "description": "Pull day focusing on back and biceps",
+        "is_global": True,
+        "exercises": ["Barbell Deadlift", "Barbell Row", "Lat Pulldown",
+                   "Face Pull", "Barbell Curl"]
+    },
+    {
+        "name": "PPL Legs A",
+        "type": "ppl",
+        "description": "Leg day focusing on quads, hamstrings, and calves",
+        "is_global": True,
+        "exercises": ["Barbell Back Squat", "Romanian Deadlift", "Leg Press",
+                   "Leg Curl", "Standing Calf Raise"]
+    },
+    {
+        "name": "PPL Push B",
+        "type": "ppl",
+        "description": "Alternate push day with different exercises",
+        "is_global": True,
+        "exercises": ["Dumbbell Shoulder Press", "Cable Fly", "Dips",
+                   "Skull Crushers", "Triceps Overhead Extension"]
+    },
+    {
+        "name": "PPL Pull B",
+        "type": "ppl",
+        "description": "Alternate pull day with different exercises",
+        "is_global": True,
+        "exercises": ["Pull-Ups", "Seated Cable Row", "Single-Arm Dumbbell Row",
+                   "Hammer Curl", "Reverse Fly"]
+    },
+    {
+        "name": "PPL Legs B",
+        "type": "ppl",
+        "description": "Alternate leg day with different exercises",
+        "is_global": True,
+        "exercises": ["Front Squat", "Bulgarian Split Squat", "Hip Thrust",
+                   "Leg Extension", "Standing Calf Raise"]
+    },
+    {
+        "name": "Full Body Beginner A",
+        "type": "beginner",
+        "description": "Full body workout for beginners",
+        "is_global": True,
+        "exercises": ["Barbell Back Squat", "Barbell Bench Press", "Barbell Row",
+                   "Barbell Overhead Press", "Barbell Deadlift"]
+    },
+    {
+        "name": "Upper Body",
+        "type": "strength",
+        "description": "Upper body strength focus",
+        "is_global": True,
+        "exercises": ["Barbell Bench Press", "Pull-Ups", "Barbell Overhead Press",
+                   "Barbell Row", "Dips"]
+    },
+    {
+        "name": "Lower Body",
+        "type": "strength",
+        "description": "Lower body strength focus",
+        "is_global": True,
+        "exercises": ["Barbell Back Squat", "Romanian Deadlift", "Leg Press",
+                   "Leg Curl", "Hip Thrust", "Standing Calf Raise"]
+    },
+    {
+        "name": "Push/Pull/Legs (Full Week)",
+        "type": "ppl",
+        "description": "Complete 6-day PPL program",
+        "is_global": True,
+        "exercises": []  # This is a meta-template description
+    }
+]
+
+
 async def seed_exercises() -> None:
     """Seed the exercises table."""
     async with engine.begin() as conn:
@@ -121,6 +206,49 @@ async def seed_exercises() -> None:
         await session.commit()
         print(f"Seeded {len(EXERCISES)} exercises.")
 
+        # Seed global templates after exercises are seeded
+        await seed_global_templates(session)
+
+
+def get_exercise_ids_by_names(db, exercise_names: list) -> list:
+    """Get exercise IDs for a list of exercise names"""
+    exercise_ids = []
+    for name in exercise_names:
+        exercise = db.query(Exercise).filter(Exercise.name == name).first()
+        if exercise:
+            exercise_ids.append(exercise.id)
+    return exercise_ids
+
+
+async def seed_global_templates(db) -> None:
+    """Seed the global workout templates"""
+    # Check if we already have templates
+    result = db.query(Template).filter(Template.is_global == True).all()
+    if len(result) > 0:
+        print(f"Database already has {len(result)} global templates. Skipping seed.")
+        return
+
+    # Create templates
+    for template_data in GLOBAL_TEMPLATES:
+        exercise_names = template_data.pop("exercises", [])
+        template = Template(**template_data, is_global=True)
+        db.add(template)
+        db.flush()  # Get ID
+
+        # Add exercises if any
+        if exercise_names:
+            exercise_ids = get_exercise_ids_by_names(db, exercise_names)
+            template.exercises = exercise_ids
+
+    db.commit()
+    print(f"Seeded {len(GLOBAL_TEMPLATES)} global templates.")
+
+
 if __name__ == "__main__":
     # Run the seeding function
-    asyncio.run(seed_exercises())
+    async def run_seeding():
+        async with AsyncSessionLocal() as session:
+            await seed_exercises()
+        print("Seeding completed!")
+
+    asyncio.run(run_seeding())

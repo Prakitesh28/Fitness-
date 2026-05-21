@@ -22,6 +22,8 @@ class EquipmentType(str, enum.Enum):
     OTHER = "other"
 
 # Models
+from .template import Template
+
 class User(Base, AsyncAttrs):
     __tablename__ = "users"
 
