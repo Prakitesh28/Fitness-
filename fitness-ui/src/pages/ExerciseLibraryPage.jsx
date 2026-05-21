@@ -399,7 +399,7 @@ export function ExerciseLibraryPage() {
           <div className="space-y-4">
             <p className="font-semibold text-white mb-2">Equipment Type</p>
             <div className="grid gap-2 sm:grid-cols-2">
-              [
+              {[
                 {value: 'barbell', label: 'Barbell'},
                 {value: 'dumbbell', label: 'Dumbbell'},
                 {value: 'machine', label: 'Machine'},
@@ -417,7 +417,7 @@ export function ExerciseLibraryPage() {
                   />
                   <span className="text-[var(--text-primary)]">{equip.label}</span>
                 </label>
-              ))
+              ))}
             </div>
           </div>
 
