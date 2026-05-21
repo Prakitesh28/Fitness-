@@ -121,6 +121,11 @@ class BodyMetric(Base, AsyncAttrs):
     date = Column(Date, nullable=False)
     weight_kg = Column(Float, nullable=False)
     body_fat_pct = Column(Float, nullable=True)
+    chest_cm = Column(Float, nullable=True)
+    waist_cm = Column(Float, nullable=True)
+    hips_cm = Column(Float, nullable=True)
+    thigh_cm = Column(Float, nullable=True)
+    bicep_cm = Column(Float, nullable=True)
 
     # Relationships
     user = relationship("User", back_populates="body_metrics")

@@ -775,6 +775,38 @@ export function Metrics() {
     }
   };
 
+  const exportMetrics = () => {
+    if (!filtered.length) {
+      toast.warn('No data to export');
+      return;
+    }
+    // Convert filtered data to CSV
+    const headers = ['date', 'weight_kg', 'body_fat_pct', 'chest_cm', 'waist_cm', 'hips_cm', 'thigh_cm', 'bicep_cm'];
+    const rows = filtered.map(metric => [
+      metric.date,
+      metric.weight_kg,
+      metric.body_fat_pct || '',
+      metric.chest_cm || '',
+      metric.waist_cm || '',
+      metric.hips_cm || '',
+      metric.thigh_cm || '',
+      metric.bicep_cm || ''
+    ]);
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(val => `"${val}"`).join(','))
+    ].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `body_metrics_${new Date().toISOString().slice(0,10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   useEffect(() => { loadMetrics(); }, []);
 
   const sortedData = useMemo(() => [...data].sort((a, b) => new Date(a.date) - new Date(b.date)), [data]);
@@ -790,12 +822,26 @@ export function Metrics() {
       current: last?.weight_kg,
       change: first && last ? last.weight_kg - first.weight_kg : null,
       bodyFat: last?.body_fat_pct,
+      chest: last?.chest_cm,
+      waist: last?.waist_cm,
+      hips: last?.hips_cm,
+      thigh: last?.thigh_cm,
+      bicep: last?.bicep_cm,
     };
   }, [filtered]);
 
   const onSubmitMetric = async (values) => {
     try {
-      await createBodyMetric({ date: format(new Date(), 'yyyy-MM-dd'), weight_kg: Number(values.weight_kg), body_fat_pct: values.body_fat_pct ? Number(values.body_fat_pct) : null });
+      await createBodyMetric({
+        date: format(new Date(), 'yyyy-MM-dd'),
+        weight_kg: Number(values.weight_kg),
+        body_fat_pct: values.body_fat_pct ? Number(values.body_fat_pct) : null,
+        chest_cm: values.chest_cm ? Number(values.chest_cm) : null,
+        waist_cm: values.waist_cm ? Number(values.waist_cm) : null,
+        hips_cm: values.hips_cm ? Number(values.hips_cm) : null,
+        thigh_cm: values.thigh_cm ? Number(values.thigh_cm) : null,
+        bicep_cm: values.bicep_cm ? Number(values.bicep_cm) : null
+      });
       toast.success('Metric logged');
       reset();
       await loadMetrics();
@@ -823,12 +869,15 @@ export function Metrics() {
                 {option}
               </button>
             ))}
+            <Button onClick={exportMetrics} className="rounded-full px-4 py-2 text-sm transition hover:bg-[var(--surface-2)]">
+              Export CSV
+            </Button>
           </div>
         </div>
 
-        <div className="grid gap-6 xl:grid-cols-3">
+        <div className="grid gap-6 xl:grid-cols-6">
           <Card>
-            <p className="metric-label">Current</p>
+            <p className="metric-label">Weight</p>
             <p className="mt-3 text-3xl font-semibold text-white">{stats.current ?? '-'} kg</p>
             <p className="metric-subtext">Latest recorded weight</p>
           </Card>
@@ -838,9 +887,24 @@ export function Metrics() {
             <p className="metric-subtext">Over selected range</p>
           </Card>
           <Card>
-            <p className="metric-label">Body fat</p>
+            <p className="metric-label">Body Fat</p>
             <p className="mt-3 text-3xl font-semibold text-white">{stats.bodyFat != null ? `${stats.bodyFat}%` : '-'}</p>
             <p className="metric-subtext">Most recent value</p>
+          </Card>
+          <Card>
+            <p className="metric-label">Chest</p>
+            <p className="mt-3 text-3xl font-semibold text-white">{stats.chest != null ? `${stats.chest} cm` : '-'}</p>
+            <p className="metric-subtext">Chest circumference</p>
+          </Card>
+          <Card>
+            <p className="metric-label">Waist</p>
+            <p className="mt-3 text-3xl font-semibold text-white">{stats.waist != null ? `${stats.waist} cm` : '-'}</p>
+            <p className="metric-subtext">Waist circumference</p>
+          </Card>
+          <Card>
+            <p className="metric-label">Hips</p>
+            <p className="mt-3 text-3xl font-semibold text-white">{stats.hips != null ? `${stats.hips} cm` : '-'}</p>
+            <p className="metric-subtext">Hip circumference</p>
           </Card>
         </div>
 
@@ -873,13 +937,39 @@ export function Metrics() {
 
           <Card className="space-y-5">
             <div>
-              <p className="section-label">Log weight</p>
+              <p className="section-label">Log measurements</p>
               <h2 className="chart-title text-2xl font-semibold">Add today's metric</h2>
             </div>
             <form className="grid gap-4" onSubmit={handleSubmit(onSubmitMetric)}>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Input type="number" step="0.1" placeholder="Weight kg" {...register('weight_kg')} />
-                <Input type="number" step="0.1" placeholder="Body fat %" {...register('body_fat_pct')} />
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div>
+                  <Input type="number" step="0.1" placeholder="Weight kg" {...register('weight_kg')} />
+                  <p className="text-[var(--text-secondary)] text-xs">Weight</p>
+                </div>
+                <div>
+                  <Input type="number" step="0.1" placeholder="Body fat %" {...register('body_fat_pct')} />
+                  <p className="text-[var(--text-secondary)] text-xs">Body Fat</p>
+                </div>
+                <div>
+                  <Input type="number" step="0.1" placeholder="Chest cm" {...register('chest_cm')} />
+                  <p className="text-[var(--text-secondary)] text-xs">Chest</p>
+                </div>
+                <div>
+                  <Input type="number" step="0.1" placeholder="Waist cm" {...register('waist_cm')} />
+                  <p className="text-[var(--text-secondary)] text-xs">Waist</p>
+                </div>
+                <div>
+                  <Input type="number" step="0.1" placeholder="Hips cm" {...register('hips_cm')} />
+                  <p className="text-[var(--text-secondary)] text-xs">Hips</p>
+                </div>
+                <div>
+                  <Input type="number" step="0.1" placeholder="Thigh cm" {...register('thigh_cm')} />
+                  <p className="text-[var(--text-secondary)] text-xs">Thigh</p>
+                </div>
+                <div>
+                  <Input type="number" step="0.1" placeholder="Bicep cm" {...register('bicep_cm')} />
+                  <p className="text-[var(--text-secondary)] text-xs">Bicep</p>
+                </div>
               </div>
               <Button>Save metric</Button>
             </form>

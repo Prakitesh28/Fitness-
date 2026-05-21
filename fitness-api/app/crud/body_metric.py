@@ -30,7 +30,12 @@ async def create_body_metric(db: AsyncSession, metric_in: BodyMetricCreate, user
         user_id=user_id,
         date=metric_in.date,
         weight_kg=metric_in.weight_kg,
-        body_fat_pct=metric_in.body_fat_pct
+        body_fat_pct=metric_in.body_fat_pct,
+        chest_cm=metric_in.chest_cm,
+        waist_cm=metric_in.waist_cm,
+        hips_cm=metric_in.hips_cm,
+        thigh_cm=metric_in.thigh_cm,
+        bicep_cm=metric_in.bicep_cm
     )
     db.add(metric)
     await db.commit()

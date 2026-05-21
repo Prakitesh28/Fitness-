@@ -6,6 +6,16 @@ class BodyMetricBase(BaseModel):
     date: date
     weight_kg: float
     body_fat_pct: Optional[float] = None
+    chest_cm: Optional[float] = None
+    waist_cm: Optional[float] = None
+    hips_cm: Optional[float] = None
+    thigh_cm: Optional[float] = None
+    bicep_cm: Optional[float] = None
+    chest_cm: Optional[float] = None
+    waist_cm: Optional[float] = None
+    hips_cm: Optional[float] = None
+    thigh_cm: Optional[float] = None
+    bicep_cm: Optional[float] = None
 
 class BodyMetricCreate(BodyMetricBase):
     pass
@@ -13,6 +23,11 @@ class BodyMetricCreate(BodyMetricBase):
 class BodyMetricUpdate(BaseModel):
     weight_kg: Optional[float] = None
     body_fat_pct: Optional[float] = None
+    chest_cm: Optional[float] = None
+    waist_cm: Optional[float] = None
+    hips_cm: Optional[float] = None
+    thigh_cm: Optional[float] = None
+    bicep_cm: Optional[float] = None
 
 class BodyMetricResponse(BodyMetricBase):
     id: int

@@ -435,10 +435,144 @@ function GroomingTab() {
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-semibold text-[var(--accent)]">Grooming Guide</h2>
-      <p className="text-[var(--text-secondary)]">Grooming tab content coming soon...</p>
-      <div className="mt-4">
-        <h3 className="font-semibold text-[var(--accent)]">Coming Soon</h3>
-        <p className="text-[var(--text-secondary)]">Detailed grooming guide for eyebrows, beard, nose/ear hair, teeth, and fragrance.</p>
+      <p className="text-[var(--text-secondary)]">Master the essentials of male grooming for a polished, attractive appearance.</p>
+
+      {/* Grooming Sections */}
+      <div className="mt-6 space-y-8">
+        {/* Eyebrows */}
+        <div className="space-y-4">
+          <h3 className="font-semibold text-[var(--accent)] text-lg">Eyebrows</h3>
+          <p className="text-[var(--text-secondary)] mb-2">Well-groomed eyebrows frame your eyes and enhance facial structure.</p>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="p-3 bg-[var(--surface)] rounded-md">
+              <p className="text-[var(--text-secondary)] text-sm">Do:</p>
+              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
+                <li>Trim to follow natural shape</li>
+                <li>Remove stray hairs between brows</li>
+                <li>Keep tails pointing slightly downward</li>
+                <li>Use brow gel to keep hairs in place</li>
+              </ul>
+            </div>
+            <div className="p-3 bg-[var(--surface)] rounded-md">
+              <p className="text-[var(--text-secondary)] text-sm">Don't:</p>
+              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
+                <li>Over-tweeze or create unnatural shapes</li>
+                <li>Make them too thin</li>
+                <li>Ignore the natural arch</li>
+                <li>Use dark products that look artificial</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* Beard */}
+        <div className="space-y-4">
+          <h3 className="font-semibold text-[var(--accent)] text-lg">Beard & Facial Hair</h3>
+          <p className="text-[var(--text-secondary)] mb-2">A well-maintained beard enhances masculinity and jawline definition.</p>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="p-3 bg-[var(--surface)] rounded-md">
+              <p className="text-[var(--text-secondary)] text-sm">Do:</p>
+              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
+                <li>Wash beard 2-3x per week with beard soap</li>
+                <li>Apply beard oil daily to moisturize skin and hair</li>
+                <li>Trim neckline and cheek lines for clean edges</li>
+                <li>Brush or comb daily to distribute oils</li>
+                <li>Define your cheek line and neckline</li>
+              </ul>
+            </div>
+            <div className="p-3 bg-[var(--surface)] rounded-md">
+              <p className="text-[var(--text-secondary)] text-sm">Don't:</p>
+              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
+                <li>Let it grow wild without maintenance</li>
+                <li>Use regular shampoo (dries out facial hair)</li>
+                <li>Neglect the neckline (creates "neckbeard")</li>
+                <li>Apply products to dirty beard</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* Nose/Ear Hair */}
+        <div className="space-y-4">
+          <h3 className="font-semibold text-[var(--accent)] text-lg">Nose & Ear Hair</h3>
+          <p className="text-[var(--text-secondary)] mb-2">Visible nose and ear hair significantly detracts from an otherwise well-groomed appearance.</p>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="p-3 bg-[var(--surface)] rounded-md">
+              <p className="text-[var(--text-secondary)] text-sm">Do:</p>
+              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
+                <li>Check weekly in good lighting</li>
+                <li>Use specialized nose/ear hair trimmer</li>
+                <li>Trim after shower when hairs are soft</li>
+                <li>Only trim visible hairs, don't go deep</li>
+                <li>Clean trimmer after each use</li>
+              </ul>
+            </div>
+            <div className="p-3 bg-[var(--surface)] rounded-md">
+              <p className="text-[var(--text-secondary)] text-sm">Don't:</p>
+              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
+                <li>Pluck hairs (can cause infection)</li>
+                <li>Use regular scissors (unsafe)</li>
+                <li>Trim too frequently (can cause irritation)</li>
+                <li>Ignore until it's visibly obvious</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* Teeth */}
+        <div className="space-y-4">
+          <h3 className="font-semibold text-[var(--accent)] text-lg">Teeth & Smile</h3>
+          <p className="text-[var(--text-secondary)] mb-2">A healthy, clean smile is one of your most attractive features.</p>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="p-3 bg-[var(--surface)] rounded-md">
+              <p className="text-[var(--text-secondary)] text-sm">Do:</p>
+              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
+                <li>Brush 2x daily for 2 minutes</li>
+                <li>Floss daily to remove plaque between teeth</li>
+                <li>Use tongue scraper to remove bacteria</li>
+                <li>Visit dentist every 6 months</li>
+                <li>Consider whitening for stained teeth</li>
+                <li>Fix any visible chips or cracks</li>
+              </ul>
+            </div>
+            <div className="p-3 bg-[var(--surface)] rounded-md">
+              <p className="text-[var(--text-secondary)] text-sm">Don't:</p>
+              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
+                <li>Brush immediately after acidic foods</li>
+                <li>Use tobacco products (stains and damages)</li>
+                <li>Ignore tooth pain or sensitivity</li>
+                <li>Use teeth as tools (opens bottles, etc.)</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* Fragrance */}
+        <div className="space-y-4">
+          <h3 className="font-semibold text-[var(--accent)] text-lg">Fragrance</h3>
+          <p className="text-[var(--text-secondary)] mb-2">The right scent leaves a lasting impression; the wrong one can be overwhelming.</p>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="p-3 bg-[var(--surface)] rounded-md">
+              <p className="text-[var(--text-secondary)] text-sm">Do:</p>
+              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
+                <li>Apply to pulse points (wrists, neck, chest)</li>
+                <li>Start with 1-2 sprays, you can always add more</li>
+                <li>Choose scents appropriate for occasion (day/night)</li>
+                <li>Moisturize skin first (helps scent last longer)</li>
+                <li>Store in cool, dark place to preserve quality</li>
+              </ul>
+            </div>
+            <div className="p-3 bg-[var(--surface)] rounded-md">
+              <p className="text-[var(--text-secondary)] text-sm">Don't:</p>
+              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
+                <li>Rub wrists together (breaks down scent molecules)</li>
+                <li>Apply to clothing (can stain and alter scent)</li>
+                <li>Overapply (more than 3-4 sprays is usually too much)</li>
+                <li>Apply to sweaty skin (can create unpleasant mix)</li>
+              </ul>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -448,10 +582,161 @@ function StyleTab() {
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-semibold text-[var(--accent)]">Style Guide</h2>
-      <p className="text-[var(--text-secondary)]">Style tab content coming soon...</p>
-      <div className="mt-4">
-        <h3 className="font-semibold text-[var(--accent)]">Coming Soon</h3>
-        <p className="text-[var(--text-secondary)]">Information on fit, color coordination, wardrobe essentials, and style for body types.</p>
+      <p className="text-[var(--text-secondary)]">Elevate your personal style to match your improved physique and appearance.</p>
+
+      {/* Style Sections */}
+      <div className="mt-6 space-y-8">
+        {/* Fit */}
+        <div className="space-y-4">
+          <h3 className="font-semibold text-[var(--accent)] text-lg">Fit is Everything</h3>
+          <p className="text-[var(--text-secondary)] mb-2">Proper fit is the most important aspect of style - it can make inexpensive clothes look expensive and expensive clothes look cheap.</p>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="p-3 bg-[var(--surface)] rounded-md">
+              <p className="text-[var(--text-secondary)] text-sm">Do:</p>
+              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
+                <li>Shoulder seams should end at the edge of your shoulder</li>
+                <li>Sleeves should show about 1/2 inch of shirt cuff</li>
+                <li>Pants should break slightly at the shoe (or no break for modern look)</li>
+                <li>Shirts should be tapered to your waist (no billowing)</li>
+                <li>Jackets should button comfortably without pulling</li>
+              </ul>
+            </div>
+            <div className="p-3 bg-[var(--surface)] rounded-md">
+              <p className="text-[var(--text-secondary)] text-sm">Don't:</p>
+              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
+                <li>Wear clothes that are too tight (uncomfortable and unflattering)</li>
+                <li>Wear clothes that are too baggy (hides your physique)</li>
+                <li>Ignore proper sleeve and pant lengths</li>
+                <li>Buy off-the-rack without considering alterations</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* Color Coordination */}
+        <div className="space-y-4">
+          <h3 className="font-semibold text-[var(--accent)] text-lg">Color Coordination</h3>
+          <p className="text-[var(--text-secondary)] mb-2">Understanding color theory helps you create cohesive, intentional outfits.</p>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="p-3 bg-[var(--surface)] rounded-md">
+              <p className="text-[var(--text-secondary)] text-sm">Neutrals (Build Your Foundation):</p>
+              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
+                <li>Black, white, gray, navy, beige, olive</li>
+                <li>Easy to mix and match</li>
+                <li>Timeless and versatile</li>
+                <li>Invest in quality neutral pieces</li>
+              </ul>
+            </div>
+            <div className="p-3 bg-[var(--surface)] rounded-md">
+              <p className="text-[var(--text-secondary)] text-sm">Accent Colors:</p>
+              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
+                <li>Burgundy, forest green, mustard, cobalt blue</li>
+                <li>Use for pieces like sweaters, shirts, accessories</li>
+                <li>Complement your skin tone and hair color</li>
+                <li>Start with one accent color per outfit</li>
+              </ul>
+            </div>
+          </div>
+          <div className="mt-3 p-3 bg-[var(--surface)] rounded-md">
+            <p className="text-[var(--text-secondary)] text-sm">Color Combinations That Work:</p>
+            <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
+              <li>Navy + White + Tan (classic nautical)</li>
+              <li>Gray + Black + Red (monochrome with pop)</li>
+              <li>Olive + Beige + Brown (earth tones)</li>
+              <li>Black + White + Gold (luxury minimalist)</li>
+              <li>White + Light Blue + Brown (spring/summer)</li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Wardrobe Essentials */}
+        <div className="space-y-4">
+          <h3 className="font-semibold text-[var(--accent)] text-lg">Wardrobe Essentials</h3>
+          <p className="text-[var(--text-secondary)] mb-2">Build a versatile foundation with these key pieces.</p>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="p-3 bg-[var(--surface)] rounded-md">
+              <p className="text-[var(--text-secondary)] text-sm">Tops:</p>
+              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
+                <li>White and light blue dress shirts</li>
+                <li>Crew neck t-shirts (white, gray, black)</li>
+                <li>V-neck t-shirts (for layering)</li>
+                <li>Polo shirts (cotton or merino wool)</li>
+                <li>Sweaters (crew neck, V-neck, cardigan)</li>
+                <li>Henley shirts (casual alternative to t-shirts)</li>
+              </ul>
+            </div>
+            <div className="p-3 bg-[var(--surface)] rounded-md">
+              <p className="text-[var(--text-secondary)] text-sm">Bottoms:</p>
+              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
+                <li>Dark wash jeans (straight or slim fit)</li>
+                <li>Chinos (navy, olive, khaki)</li>
+                <li>Wool trousers (gray, navy, charcoal)</li>
+                <li>Shorts (tailored, not athletic)</li>
+                <li>Sweatpants (premium, tapered for athleisure)</li>
+              </ul>
+            </div>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2 mt-3">
+            <div className="p-3 bg-[var(--surface)] rounded-md">
+              <p className="text-[var(--text-secondary)] text-sm">Outerwear:</p>
+              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
+                <li>Blazer (navy or charcoal)</li>
+                <li>Denim jacket (medium wash)</li>
+                <li>Bomber jacket (navy or black)</li>
+                <li>Wool overcoat (for winter)</li>
+                <li>Trench coat (beige, classic)</li>
+              </ul>
+            </div>
+            <div className="p-3 bg-[var(--surface)] rounded-md">
+              <p className="text-[var(--text-secondary)] text-sm">Shoes:</p>
+              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
+                <li>White leather sneakers (common projects, stan smith)</li>
+                <li>Brown leather brogues or derby shoes</li>
+                <li>Black leather dress shoes (oxfords)</li>
+                <li>Desert boots or chukka boots</li>
+                <li>Loafers (penny or tassel)</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* Style for Body Types */}
+        <div className="space-y-4">
+          <h3 className="font-semibold text-[var(--accent)] text-lg">Dress for Your Physique</h3>
+          <p className="text-[var(--text-secondary)] mb-2">As your body changes with training, adjust your style to highlight your progress.</p>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="p-3 bg-[var(--surface)] rounded-md">
+              <p className="text-[var(--text-secondary)] text-sm">For V-Taper (Wide Shoulders, Narrow Waist):</p>
+              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
+                <li>Fitted shirts to show off your taper</li>
+                <li>Structured jackets with shoulder definition</li>
+                <li>Straight or slim jeans to balance proportions</li>
+                <li>V-necks to draw eye upward to chest</li>
+                <li>Avoid overly baggy clothes that hide your shape</li>
+              </ul>
+            </div>
+            <div className="p-3 bg-[var(--surface)] rounded-md">
+              <p className="text-[var(--text-secondary)] text-sm">For Strong Legs (Developed Quads/Hams):</p>
+              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
+                <li>Straight or tapered pants (not skinny)</li>
+                <li>Shorts that hit above the knee</li>
+                <li>Consider cuffing pants to show off footwear</li>
+                <li>Avoid tapered ankles that look constricted</li>
+                <li>Dark wash jeans to createLengthening effect</li>
+              </ul>
+            </div>
+          </div>
+          <div className="mt-3 p-3 bg-[var(--surface)] rounded-md">
+            <p className="text-[var(--text-secondary)] text-sm">General Principles:</p>
+            <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
+              <li>Clothes should follow your natural lines, not fight them</li>
+              <li>Highlight your best features (shoulders, chest, arms)</li>
+              <li>Create balance - if top is fitted, bottom can be slightly relaxed</li>
+              <li>Invest in tailoring as your physique changes</li>
+              <li>Quality over quantity - build a versatile wardrobe slowly</li>
+            </ul>
+          </div>
+        </div>
       </div>
     </div>
   );
