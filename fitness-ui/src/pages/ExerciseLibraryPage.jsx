@@ -374,7 +374,7 @@ export function ExerciseLibraryPage() {
             <div className="space-y-4">
               <p className="font-semibold text-white mb-2">Muscle Group</p>
               <div className="grid gap-2 sm:grid-cols-2">
-                [
+                {[
                   {value: 'push', label: 'Push'},
                   {value: 'pull', label: 'Pull'},
                   {value: 'legs', label: 'Legs'},
