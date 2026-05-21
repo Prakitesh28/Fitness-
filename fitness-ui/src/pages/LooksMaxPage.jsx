@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import { toast } from 'react-hot-toast';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Card from '../components/ui/Card';
@@ -10,7 +9,8 @@ import { Toaster, toast } from 'react-hot-toast';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { createTemplate, getExercises } from '../api/templates';
+import { createTemplate } from "../api/templates";
+import { getExercises } from "../api/exercises";
 
 export default function LooksMaxPage() {
   const { user } = useAuthStore();
@@ -256,7 +256,8 @@ export default function LooksMaxPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--bg)] p-6">
+    <>
+      <div className="min-h-screen bg-[var(--bg)] p-6">
       {/* Tabs */}
       <div className="mb-6 flex flex-wrap gap-2">
         {[
@@ -525,7 +526,7 @@ export default function LooksMaxPage() {
           {Object.values(errors)[0] && (
             <p className="text-sm text-[var(--accent)]">
               {Object.values(errors)[0].message}
-            </>
+            </p>
           )}
 
           <Button
@@ -538,7 +539,7 @@ export default function LooksMaxPage() {
       </Modal>
 
       <Toaster position="top-right" />
-    </div>
+    </>
   );
 }
 
@@ -728,7 +729,7 @@ function HairTab({ hairData }) {
                   Washed: {log.washed ? 'Yes' : 'No'} |
                   Oiled: {log.oiled ? 'Yes' : 'No'}
                 </p>
-              </>
+              </div>
             ))}
           </div>
         </div>
@@ -754,7 +755,7 @@ function JawlineTab({ jawlineData }) {
                   Gua Sha: {log.gua_sha ? 'Yes' : 'No'} |
                   Chewing: {log.chewing_gum_minutes} min
                 </p>
-              </>
+              </div>
             ))}
           </div>
         </div>

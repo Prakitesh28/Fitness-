@@ -13,7 +13,7 @@ import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 
-export function TemplatesPage() {
+export default function TemplatesPage() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const [templates, setTemplates] = useState([]);

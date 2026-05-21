@@ -9,7 +9,7 @@ import { createWorkout, getExercises, addExerciseToWorkout, addSetToExercise, ge
 import { Toaster, toast } from 'react-hot-toast';
 import { Clock, RotateCw, Zap, Dumbbell, Activity } from 'lucide-react';
 
-export function QuickLogPage() {
+export default function QuickLogPage() {
   const navigate = useNavigate();
   const [exercises, setExercises] = useState([]);
   const [recentExercises, setRecentExercises] = useState([]);

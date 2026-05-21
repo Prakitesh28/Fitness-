@@ -14,7 +14,7 @@ import { Trash2, Plus, Edit2 } from 'lucide-react';
 import { useMemo } from 'react';
 import Modal from '../components/ui/Modal';
 
-export function ExerciseLibraryPage() {
+export default function ExerciseLibraryPage() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const [exercises, setExercises] = useState([]);
