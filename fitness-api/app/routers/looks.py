@@ -202,7 +202,7 @@ def read_today_checklist(
 def update_today_checklist(
     checklist_update: schemas.LooksChecklistUpdate,
     db: Session = Depends(get_db),
-    current_user: user_models.User = Depends(get_current_active_user)
+    current_user: user = Depends(get_current_active_user)
 ):
     today = date.today()
     db_checklist = db.query(models.LooksChecklist).filter(
