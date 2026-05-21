@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import auth, users, workouts, exercises, metrics, nutrition, stats, coach
+from app.routers import auth, users, workouts, exercises, metrics, nutrition, stats, coach, looks, templates
 from app.config import settings
 from app.database import engine, Base
 from app.seed import seed_exercises
