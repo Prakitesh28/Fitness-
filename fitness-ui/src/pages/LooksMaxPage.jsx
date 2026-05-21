@@ -5,6 +5,12 @@ import { toast } from 'react-hot-toast';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Card from '../components/ui/Card';
+import Modal from '../components/ui/Modal';
+import { Toaster, toast } from 'react-hot-toast';
+import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { createTemplate, getExercises } from '../api/templates';
 
 export default function LooksMaxPage() {
   const { user } = useAuthStore();
@@ -17,12 +23,72 @@ export default function LooksMaxPage() {
   const [checklist, setChecklist] = useState(null);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [templates, setTemplates] = useState([]);
+  const [filter, setFilter] = useState('all'); // all, ppl, strength, beginner, my
 
   // State for other tabs (placeholder)
   const [skinData, setSkinData] = useState([]);
   const [hairData, setHairData] = useState([]);
   const [jawlineData, setJawlineData] = useState([]);
   const [goals, setGoals] = useState([]);
+
+  // State for template creation
+  const [createOpen, setCreateOpen] = useState(false);
+  const [exercises, setExercises] = useState([]);
+
+  // Create template form
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    resolver: zodResolver(
+      z.object({
+        name: z.string().min(1),
+        type: z.enum(['ppl', 'strength', 'beginner', 'custom']),
+        description: z.string().optional(),
+        exercises: z.array(z.number()).min(1, 'Select at least one exercise'),
+      })
+    ),
+    defaultValues: {
+      name: '',
+      type: 'custom',
+      description: '',
+      exercises: [],
+    },
+  });
+
+  const onCreateTemplate = async (values) => {
+    try {
+      await createTemplate(values);
+      toast.success('Template created');
+      setCreateOpen(false);
+      reset();
+    } catch (error) {
+      toast.error('Failed to create template');
+    }
+  };
+
+  // Fetch exercises for template creation
+  useEffect(() => {
+    const fetchExercises = async () => {
+      try {
+        const response = await fetch('/exercises', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+          }
+        });
+        if (response.ok) {
+          const exercisesData = await response.json();
+          setExercises(exercisesData);
+        }
+      } catch (error) {
+        console.error('Error fetching exercises:', error);
+      }
+    };
+    fetchExercises();
+  }, []);
 
   useEffect(() => {
     fetchData();
@@ -96,11 +162,54 @@ export default function LooksMaxPage() {
         const goalsData = await goalsRes.json();
         setGoals(goalsData);
       }
+
+      // Fetch templates
+      const templatesRes = await fetch('/templates', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+        }
+      });
+      if (templatesRes.ok) {
+        const templatesData = await templatesRes.json();
+        setTemplates(templatesData);
+      }
     } catch (error) {
       console.error('Error fetching looksmax data:', error);
       toast.error('Failed to load looksmax data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Filter templates based on selected filter
+  const filteredTemplates = useMemo(() => {
+    if (filter === 'all') return templates;
+    if (filter === 'my') return templates.filter(t => !t.is_global && t.user_id === user?.id);
+    return templates.filter(t => t.type === filter && t.is_global);
+  }, [templates, filter, user?.id]);
+
+  const handleFilterChange = (newFilter) => {
+    setFilter(newFilter);
+  };
+
+  const handleStartWorkout = async (templateId) => {
+    try {
+      const response = await fetch(`/templates/${templateId}/start`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+        }
+      });
+      if (response.ok) {
+        const workoutData = await response.json();
+        toast.success('Workout started from template');
+        navigate(`/workouts/${workoutData.id}`);
+      } else {
+        throw new Error('Failed to start workout');
+      }
+    } catch (error) {
+      console.error('Error starting workout:', error);
+      toast.error('Failed to start workout from template');
     }
   };
 
@@ -170,7 +279,152 @@ export default function LooksMaxPage() {
             {tab.label}
           </button>
         ))}
+        <Button
+          onClick={() => setCreateOpen(true)}
+          className="ml-auto px-4 py-2 rounded-full text-sm font-medium transition-all bg-[var(--accent)] text-white"
+        >
+          Create Template
+        </Button>
       </div>
+
+      {/* Template Filters */}
+      {activeTab === 'overview' && (
+        <div className="mb-6 flex gap-2 flex-wrap">
+          <Button
+            onClick={() => handleFilterChange('all')}
+            className={`px-4 py-2 rounded-full text-sm transition-all ${
+              filter === 'all'
+                ? 'bg-[var(--accent)] text-white'
+                : 'bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-2)]'
+            }`}
+          >
+            All
+          </Button>
+          <Button
+            onClick={() => handleFilterChange('ppl')}
+            className={`px-4 py-2 rounded-full text-sm transition-all ${
+              filter === 'ppl'
+                ? 'bg-[var(--accent)] text-white'
+                : 'bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-2)]'
+            }`}
+          >
+            PPL
+          </Button>
+          <Button
+            onClick={() => handleFilterChange('strength')}
+            className={`px-4 py-2 rounded-full text-sm transition-all ${
+              filter === 'strength'
+                ? 'bg-[var(--accent)] text-white'
+                : 'bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-2)]'
+            }`}
+          >
+            Strength
+          </Button>
+          <Button
+            onClick={() => handleFilterChange('beginner')}
+            className={`px-4 py-2 rounded-full text-sm transition-all ${
+              filter === 'beginner'
+                ? 'bg-[var(--accent)] text-white'
+                : 'bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-2)]'
+            }`}
+          >
+            Beginner
+          </Button>
+          {user && (
+            <Button
+              onClick={() => handleFilterChange('my')}
+              className={`px-4 py-2 rounded-full text-sm transition-all ${
+                filter === 'my'
+                  ? 'bg-[var(--accent)] text-white'
+                  : 'bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-2)]'
+              }`}
+            >
+              My Templates
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* Templates Grid */}
+      {activeTab === 'overview' && (
+        <div className="grid gap-6 xl:grid-cols-[repeat(3,minmax(0,1fr))]">
+          {filteredTemplates.length === 0 ? (
+            <Card className="col-span-3">
+              <div className="text-center py-12">
+                <p className="text-[var(--text-secondary)]">
+                  No templates found. Try a different filter or create your first template.
+                </p>
+              </div>
+            </Card>
+          ) : (
+            filteredTemplates.map((template) => (
+              <Card
+                key={template.id}
+                className="group hover:shadow-[0_0_20px_rgba(220,20,60,0.15)] hover:border-[var(--border-strong)] cursor-pointer"
+                onClick={() => {
+                  // Navigate to template detail view or start workout?
+                  // For now, let's start workout directly
+                  handleStartWorkout(template.id);
+                }}
+              >
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="font-semibold text-white text-lg">{template.name}</p>
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        template.type === 'ppl'
+                          ? 'bg-green-600/20 text-green-400'
+                          : template.type === 'strength'
+                            ? 'bg-blue-600/20 text-blue-400'
+                            : template.type === 'beginner'
+                              ? 'bg-purple-600/20 text-purple-400'
+                              : 'bg-gray-600/20 text-gray-400'
+                      }`}>
+                        {template.type.toUpperCase()}
+                      </span>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleStartWorkout(template.id);
+                      }}
+                    >
+                      Start
+                    </Button>
+                  </div>
+
+                  {template.description && (
+                    <p className="text-[var(--text-secondary)] text-sm line-clamp-2">
+                      {template.description}
+                    </p>
+                  )}
+
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {template.exercises?.map((exerciseId) => {
+                      const exercise = exercises.find((ex) => ex.id === exerciseId);
+                      if (!exercise) return null;
+                      return (
+                        <span
+                          key={exerciseId}
+                          className="rounded-full bg-[var(--surface-2)] px-3 py-1 text-xs uppercase tracking-[0.2em] text-[var(--text-secondary)]"
+                        >
+                          {exercise.name}
+                        </span>
+                      );
+                    })}
+                  </div>
+
+                  <p className="text-xs text-[var(--text-secondary)] mt-2">
+                    {template.exercises?.length} exercises
+                  </p>
+                </div>
+              </Card>
+            ))
+          )}
+        </div>
+      )}
 
       {/* Tab Content */}
       {activeTab === 'overview' && (
@@ -206,6 +460,86 @@ export default function LooksMaxPage() {
           goals={goals}
         />
       )}
+    </div>
+
+      {/* Create Template Modal */}
+      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Create Workout Template">
+        <form className="space-y-6" onSubmit={handleSubmit(onCreateTemplate)}>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input
+              placeholder="Template name"
+              {...register('name')}
+            />
+            <Input
+              placeholder="Description (optional)"
+              {...register('description')}
+            />
+          </div>
+
+          <div className="space-y-4">
+            <p className="font-semibold text-white mb-2">Template Type</p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {[
+                { value: 'ppl', label: 'PPL' },
+                { value: 'strength', label: 'Strength' },
+                { value: 'beginner', label: 'Beginner' },
+                { value: 'custom', label: 'Custom' }
+              ].map((type) => (
+                <label key={type.value} className="flex items-center gap-3">
+                  <input
+                    type="radio"
+                    value={type.value}
+                    checked={register('type').value === type.value}
+                    onChange={(e) => {
+                      // Let react-hook-form handle the change
+                    }}
+                    className="h-4 w-4 text-[var(--accent)] rounded-border"
+                  />
+                  <span className="text-[var(--text-primary)]">{type.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <p className="font-semibold text-white mb-2">Select Exercises</p>
+            <div className="grid gap-3">
+              {exercises.map((exercise) => (
+                <label key={exercise.id} className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    value={exercise.id}
+                    checked={register('exercises').value?.includes(exercise.id) || false}
+                    onChange={(e) => {
+                      // Let react-hook-form handle the change via onChange
+                    }}
+                    className="h-4 w-4 text-[var(--accent)] rounded-border"
+                  />
+                  <span className="text-[var(--text-primary)]">{exercise.name}</span>
+                </label>
+              ))}
+            </div>
+            <p className="text-[var(--text-secondary)] text-sm mt-2">
+              Hold Ctrl/Cmd to select multiple exercises
+            </p>
+          </div>
+
+          {Object.values(errors)[0] && (
+            <p className="text-sm text-[var(--accent)]">
+              {Object.values(errors)[0].message}
+            </>
+          )}
+
+          <Button
+            disabled={isSubmitting}
+            className="w-full"
+          >
+            {isSubmitting ? 'Creating...' : 'Create Template'}
+          </Button>
+        </form>
+      </Modal>
+
+      <Toaster position="top-right" />
     </div>
   );
 }
@@ -371,7 +705,7 @@ function SkinTab({ skinData }) {
                   Water: {log.water_intake_ml || 0}ml |
                   Sleep: {log.sleep_hours || 0}hrs
                 </p>
-              </>
+              </div>
             ))}
           </div>
         </div>

@@ -294,8 +294,7 @@ export function TemplatesPage() {
                     value={type.value}
                     checked={register('type').value === type.value}
                     onChange={(e) => {
-                      // Handle radio change - need to update form value
-                      // The form will handle this automatically with react-hook-form
+                      // Let react-hook-form handle the change
                     }}
                     className="h-4 w-4 text-[var(--accent)] rounded-border"
                   />
@@ -315,18 +314,7 @@ export function TemplatesPage() {
                     value={exercise.id}
                     checked={register('exercises').value?.includes(exercise.id) || false}
                     onChange={(e) => {
-                      // Handle checkbox change - react-hook-form will manage this
-                      // We need to manually update the field value since it's an array
-                      const exerciseIds = register('exercises').value || [];
-                      if (e.target.checked) {
-                        // Add exercise if not already selected
-                        if (!exerciseIds.includes(exercise.id)) {
-                          register('exercises').ref.value = [...exerciseIds, exercise.id];
-                        }
-                      } else {
-                        // Remove exercise if selected
-                        register('exercises').ref.value = exerciseIds.filter(id => id !== exercise.id);
-                      }
+                      // Let react-hook-form handle the change via onChange
                     }}
                     className="h-4 w-4 text-[var(--accent)] rounded-border"
                   />
