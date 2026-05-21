@@ -1,5 +1,5 @@
 ﻿import { BrowserRouter, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -13,10 +13,14 @@ import Input from './components/ui/Input';
 import Skeleton from './components/ui/Skeleton';
 import Modal from './components/ui/Modal';
 import { useAuthStore } from './store/authStore';
-import LooksMaxPage from './pages/LooksMaxPage';
-import TemplatesPage from './pages/TemplatesPage';
-import QuickLogPage from './pages/QuickLogPage';
-import ExerciseLibraryPage from './pages/ExerciseLibraryPage';
+import BatLoader, { BatLoaderInline } from './components/ui/BatLoader';
+import ErrorBoundary from './components/ui/ErrorBoundary';
+import client from './api/client';
+
+const LooksMaxPage = lazy(() => import('./pages/LooksMaxPage'));
+const TemplatesPage = lazy(() => import('./pages/TemplatesPage'));
+const QuickLogPage = lazy(() => import('./pages/QuickLogPage'));
+const ExerciseLibraryPage = lazy(() => import('./pages/ExerciseLibraryPage'));
 import { createWorkout, getExercises, getWorkoutById, getWorkouts, updateWorkout, addExerciseToWorkout, addSetToExercise, removeExerciseFromWorkout } from './api/workouts';
 import { createBodyMetric, getBodyMetrics } from './api/metrics';
 import { createNutritionLog, getNutritionLogs } from './api/nutrition';
@@ -68,33 +72,23 @@ const Spinner = ({ label }) => {
   );
 };
 
-const ColdStartOverlay = () => {
+function PageSuspense({ children }) {
   return (
-    <div className="fixed inset-0 bg-[var(--bg)] flex items-center justify-center z-50">
-      <div className="text-center space-y-6">
-        <div className="relative w-20 h-20">
-          <svg className="absolute inset-0" viewBox="0 0 24 24" stroke="var(--accent)" strokeWidth={2} fill="none" className="animate-pulse">
-            <path d="M4 6h16M4 12h16M4 18h16"/>
-          </svg>
-          <div className="absolute inset-0 flex items-center justify-center text-[var(--accent)] font-bold text-2xl">
-            <svg className="h-8 w-8 animate-pulse" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2C9.8 6 4 7 4 10c0 2 4 3 8 3s8-1 8-3c0-3-5.8-4-8-8z"/>
-            </svg>
-          </div>
-        </div>
-        <h1 className="text-4xl font-semibold text-[var(--accent)]">Waking up the Batcomputer...</h1>
-        <p className="text-[var(--text-secondary)] max-w-xl">First load may take up to 15 seconds on free tier</p>
-        <div className="w-64 h-2 bg-[var(--surface)] rounded-full overflow-hidden">
-          <div className="h-full w-[0%] bg-[var(--accent)] transition-[width] duration-15000 ease-linear" id="coldStartProgress"></div>
-        </div>
-      </div>
-    </div>
+    <Suspense fallback={<div className="p-6"><BatLoaderInline label="Loading module" /></div>}>
+      {children}
+    </Suspense>
   );
-};
+}
 
 function Protected({ children }) {
   const { token, loading } = useAuthStore();
-  if (loading) return <div className="min-h-screen bg-[var(--bg)] p-10"><Spinner label="Restoring session..." /></div>;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[var(--bg)] p-10 flex items-center justify-center">
+        <BatLoaderInline label="Restoring session" />
+      </div>
+    );
+  }
   return token ? children : <Navigate to="/login" replace />;
 }
 
@@ -1249,6 +1243,7 @@ export function Profile() {
 
 export default function App() {
   const { hydrate, isDark, setTheme } = useAuthStore();
+  const [booting, setBooting] = useState(true);
   const [showColdStart, setShowColdStart] = useState(false);
 
   useEffect(() => {
@@ -1256,72 +1251,74 @@ export default function App() {
     setTheme(isDark);
   }, []);
 
-  // Update the axios interceptor to show cold start overlay
   useEffect(() => {
-    // Store the original response interceptor
-    const { interceptors } = require('axios');
-    const originalUse = interceptors.response.use;
-
-    // Add request tracking for cold start detection
     let requestTimer = null;
+    let pending = 0;
 
-    // Request interceptor to start timer
-    interceptors.request.use((config) => {
-      requestTimer = setTimeout(() => {
-        setShowColdStart(true);
-      }, 3000); // Show overlay after 3 seconds
-      return config;
-    }, (error) => {
-      if (requestTimer) {
-        clearTimeout(requestTimer);
-        requestTimer = null;
+    const reqId = client.interceptors.request.use((config) => {
+      pending += 1;
+      if (!requestTimer) {
+        requestTimer = setTimeout(() => setShowColdStart(true), 3000);
       }
-      return Promise.reject(error);
+      return config;
     });
 
-    // Response interceptor to hide overlay
-    interceptors.response.use(
+    const resId = client.interceptors.response.use(
       (response) => {
-        if (requestTimer) {
+        pending = Math.max(0, pending - 1);
+        if (pending === 0) {
           clearTimeout(requestTimer);
           requestTimer = null;
+          setShowColdStart(false);
         }
-        setShowColdStart(false);
         return response;
       },
       (error) => {
-        if (requestTimer) {
+        pending = Math.max(0, pending - 1);
+        if (pending === 0) {
           clearTimeout(requestTimer);
           requestTimer = null;
+          setShowColdStart(false);
         }
-        setShowColdStart(false);
         return Promise.reject(error);
       }
     );
 
-    // Keepalive ping is started in main.jsx
+    return () => {
+      client.interceptors.request.eject(reqId);
+      client.interceptors.response.eject(resId);
+      clearTimeout(requestTimer);
+    };
   }, []);
 
+  if (booting) {
+    return <BatLoader onComplete={() => setBooting(false)} />;
+  }
+
   return (
-    <BrowserRouter>
-      <Toaster position="top-right" />
-      {showColdStart && <ColdStartOverlay />}
-      <Routes>
-        <Route path="/login" element={<AuthPage mode="login" />} />
-        <Route path="/register" element={<AuthPage mode="register" />} />
-        <Route path="/dashboard" element={<Protected><Dashboard /></Protected>} />
-        <Route path="/workouts" element={<Protected><Workouts /></Protected>} />
-        <Route path="/workouts/new" element={<Protected><WorkoutSession /></Protected>} />
-        <Route path="/workouts/:id" element={<Protected><WorkoutSession /></Protected>} />
-        <Route path="/metrics" element={<Protected><Metrics /></Protected>} />
-        <Route path="/nutrition" element={<Protected><Nutrition /></Protected>} />
-        <Route path="/profile" element={<Protected><Profile /></Protected>} />
-        <Route path="/looks" element={<Protected><LooksMaxPage /></Protected>} />
-        <Route path="/templates" element={<Protected><TemplatesPage /></Protected>} />
-        <Route path="/quicklog" element={<Protected><QuickLogPage /></Protected>} />
-        <Route path="/exercises" element={<Protected><ExerciseLibraryPage /></Protected>} />
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <Toaster position="top-right" />
+        {showColdStart && (
+          <BatLoader persistent label="Batcomputer link active" />
+        )}
+        <Routes>
+          <Route path="/login" element={<AuthPage mode="login" />} />
+          <Route path="/register" element={<AuthPage mode="register" />} />
+          <Route path="/dashboard" element={<Protected><Dashboard /></Protected>} />
+          <Route path="/workouts" element={<Protected><Workouts /></Protected>} />
+          <Route path="/workouts/new" element={<Protected><WorkoutSession /></Protected>} />
+          <Route path="/workouts/:id" element={<Protected><WorkoutSession /></Protected>} />
+          <Route path="/metrics" element={<Protected><Metrics /></Protected>} />
+          <Route path="/nutrition" element={<Protected><Nutrition /></Protected>} />
+          <Route path="/profile" element={<Protected><Profile /></Protected>} />
+          <Route path="/looks" element={<Protected><PageSuspense><ErrorBoundary><LooksMaxPage /></ErrorBoundary></PageSuspense></Protected>} />
+          <Route path="/templates" element={<Protected><PageSuspense><ErrorBoundary><TemplatesPage /></ErrorBoundary></PageSuspense></Protected>} />
+          <Route path="/quicklog" element={<Protected><PageSuspense><ErrorBoundary><QuickLogPage /></ErrorBoundary></PageSuspense></Protected>} />
+          <Route path="/exercises" element={<Protected><PageSuspense><ErrorBoundary><ExerciseLibraryPage /></ErrorBoundary></PageSuspense></Protected>} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }

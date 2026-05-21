@@ -10,7 +10,7 @@ from app.models import user as user_models
 from app.routers.auth import get_current_active_user
 from app.schemas import looks as schemas
 
-router = APIRouter(prefix="/looks", tags=["looksmax"])
+router = APIRouter(tags=["looksmax"])
 
 
 # Skin endpoints
@@ -213,11 +213,18 @@ def update_today_checklist(
     if db_checklist is None:
         raise HTTPException(status_code=404, detail="Checklist not found")
 
-    # Parse existing items
+    update_data = checklist_update.dict(exclude_unset=True)
+
+    # Full checklist replace when client sends serialized items JSON
+    if "items" in update_data and isinstance(update_data["items"], str):
+        db_checklist.items = update_data["items"]
+        db.commit()
+        db.refresh(db_checklist)
+        return db_checklist
+
+    # Parse existing items for partial updates
     items = json.loads(db_checklist.items)
 
-    # Update items based on the update
-    update_data = checklist_update.dict(exclude_unset=True)
     for key, value in update_data.items():
         if "." in key:  # Handle nested keys like "morning.face_wash"
             section, item = key.split(".", 1)

@@ -1,1155 +1,725 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../store/authStore';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { format, parseISO } from 'date-fns';
+import { toast } from 'react-hot-toast';
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+} from 'recharts';
+import PageWrapper from '../components/layout/PageWrapper';
+import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
-import Card from '../components/ui/Card';
-import Modal from '../components/ui/Modal';
-import { Toaster, toast } from 'react-hot-toast';
-import { z } from 'zod';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { createTemplate } from "../api/templates";
-import { getExercises } from "../api/exercises";
+import Skeleton from '../components/ui/Skeleton';
+import {
+  getTodayChecklist,
+  updateTodayChecklist,
+  getLooksStats,
+  getSkinLogs,
+  createSkinLog,
+  getHairLogs,
+  createHairLog,
+  getJawlineLogs,
+  createJawlineLog,
+  getLooksGoals,
+  createLooksGoal,
+  updateLooksGoal,
+} from '../api/looks';
+
+const TABS = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'skin', label: 'Skin' },
+  { id: 'hair', label: 'Hair' },
+  { id: 'jawline', label: 'Jawline' },
+  { id: 'grooming', label: 'Grooming' },
+  { id: 'style', label: 'Style' },
+  { id: 'goals', label: 'Goals' },
+];
+
+const DEFAULT_CHECKLIST = {
+  morning: {
+    face_wash: false,
+    moisturiser: false,
+    sunscreen: false,
+    mewing: false,
+    cold_shower: false,
+    hair_styling: false,
+  },
+  throughout_day: {
+    water_intake: false,
+    posture_check: false,
+    chewing_gum: false,
+    no_junk_food: false,
+  },
+  evening: {
+    face_wash_pm: false,
+    moisturiser_pm: false,
+    gua_sha: false,
+    sleep_target: false,
+    hair_oil: false,
+  },
+};
+
+function parseChecklistItems(raw) {
+  try {
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    return {
+      morning: { ...DEFAULT_CHECKLIST.morning, ...parsed?.morning },
+      throughout_day: { ...DEFAULT_CHECKLIST.throughout_day, ...parsed?.throughout_day },
+      evening: { ...DEFAULT_CHECKLIST.evening, ...parsed?.evening },
+    };
+  } catch {
+    return DEFAULT_CHECKLIST;
+  }
+}
+
+function countCompleted(items) {
+  return (
+    Object.values(items.morning).filter(Boolean).length +
+    Object.values(items.throughout_day).filter(Boolean).length +
+    Object.values(items.evening).filter(Boolean).length
+  );
+}
+
+const TOTAL_CHECKLIST = 15;
+
+function ProgressBar({ value, max, label }) {
+  const pct = max ? Math.min(100, (value / max) * 100) : 0;
+  return (
+    <div className="space-y-1">
+      <div className="flex justify-between text-xs text-[var(--text-secondary)]">
+        <span>{label}</span>
+        <span className="text-[var(--accent)]">{Math.round(pct)}%</span>
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-[var(--surface-2)]">
+        <motion.div
+          className="h-full rounded-full bg-gradient-to-r from-[#8b0000] to-[var(--accent)]"
+          initial={{ width: 0 }}
+          animate={{ width: `${pct}%` }}
+          transition={{ duration: 0.5, ease: 'easeOut' }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function EmptyState({ title, description }) {
+  return (
+    <Card className="py-12 text-center">
+      <p className="text-lg font-semibold text-white">{title}</p>
+      <p className="mt-2 text-sm text-[var(--text-secondary)]">{description}</p>
+    </Card>
+  );
+}
+
+function LooksSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap gap-2">
+        {TABS.map((t) => (
+          <Skeleton key={t.id} className="h-10 w-24 rounded-full" />
+        ))}
+      </div>
+      <div className="grid gap-4 md:grid-cols-4">
+        {[1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} className="h-24 rounded-3xl" />
+        ))}
+      </div>
+      <Skeleton className="h-64 rounded-3xl" />
+    </div>
+  );
+}
 
 export default function LooksMaxPage() {
-  const { user } = useAuthStore();
-  const navigate = useNavigate();
-
-  // State for tabs
   const [activeTab, setActiveTab] = useState('overview');
-
-  // State for overview tab
+  const [loading, setLoading] = useState(true);
   const [checklist, setChecklist] = useState(null);
   const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [templates, setTemplates] = useState([]);
-  const [filter, setFilter] = useState('all'); // all, ppl, strength, beginner, my
-
-  // State for other tabs (placeholder)
   const [skinData, setSkinData] = useState([]);
   const [hairData, setHairData] = useState([]);
   const [jawlineData, setJawlineData] = useState([]);
   const [goals, setGoals] = useState([]);
+  const [loadError, setLoadError] = useState(null);
 
-  // State for template creation
-  const [createOpen, setCreateOpen] = useState(false);
-  const [exercises, setExercises] = useState([]);
-
-  // Create template form
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors, isSubmitting },
-  } = useForm({
-    resolver: zodResolver(
-      z.object({
-        name: z.string().min(1),
-        type: z.enum(['ppl', 'strength', 'beginner', 'custom']),
-        description: z.string().optional(),
-        exercises: z.array(z.number()).min(1, 'Select at least one exercise'),
-      })
-    ),
-    defaultValues: {
-      name: '',
-      type: 'custom',
-      description: '',
-      exercises: [],
-    },
-  });
-
-  const onCreateTemplate = async (values) => {
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
     try {
-      await createTemplate(values);
-      toast.success('Template created');
-      setCreateOpen(false);
-      reset();
-    } catch (error) {
-      toast.error('Failed to create template');
-    }
-  };
+      const [checklistRes, statsRes, skinRes, hairRes, jawRes, goalsRes] = await Promise.allSettled([
+        getTodayChecklist(),
+        getLooksStats(),
+        getSkinLogs(30),
+        getHairLogs(30),
+        getJawlineLogs(30),
+        getLooksGoals(),
+      ]);
 
-  // Fetch exercises for template creation
-  useEffect(() => {
-    const fetchExercises = async () => {
-      try {
-        const response = await fetch('/exercises', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-          }
-        });
-        if (response.ok) {
-          const exercisesData = await response.json();
-          setExercises(exercisesData);
-        }
-      } catch (error) {
-        console.error('Error fetching exercises:', error);
+      if (checklistRes.status === 'fulfilled') setChecklist(checklistRes.value);
+      if (statsRes.status === 'fulfilled') setStats(statsRes.value);
+      if (skinRes.status === 'fulfilled') setSkinData(skinRes.value || []);
+      if (hairRes.status === 'fulfilled') setHairData(hairRes.value || []);
+      if (jawRes.status === 'fulfilled') setJawlineData(jawRes.value || []);
+      if (goalsRes.status === 'fulfilled') setGoals(goalsRes.value || []);
+
+      const failed = [checklistRes, statsRes].filter((r) => r.status === 'rejected');
+      if (failed.length) {
+        setLoadError('Some looks data could not be loaded. Showing available modules.');
       }
-    };
-    fetchExercises();
+    } catch (error) {
+      console.error(error);
+      setLoadError('Failed to load looks dashboard.');
+      toast.error('Failed to load looks data');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      // Fetch today's checklist
-      const checklistRes = await fetch('/looks/checklist/today', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-        }
-      });
-      if (checklistRes.ok) {
-        const checklistData = await checklistRes.json();
-        setChecklist(checklistData);
-      }
+  const checklistItems = useMemo(
+    () => (checklist ? parseChecklistItems(checklist.items) : DEFAULT_CHECKLIST),
+    [checklist]
+  );
 
-      // Fetch stats
-      const statsRes = await fetch('/looks/stats', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-        }
-      });
-      if (statsRes.ok) {
-        const statsData = await statsRes.json();
-        setStats(statsData);
-      }
-
-      // Fetch skin logs (last 30 days)
-      const skinRes = await fetch('/looks/skin?days=30', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-        }
-      });
-      if (skinRes.ok) {
-        const skinData = await skinRes.json();
-        setSkinData(skinData);
-      }
-
-      // Fetch hair logs (last 30 days)
-      const hairRes = await fetch('/looks/hair?days=30', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-        }
-      });
-      if (hairRes.ok) {
-        const hairData = await hairRes.json();
-        setHairData(hairData);
-      }
-
-      // Fetch jawline logs (last 30 days)
-      const jawlineRes = await fetch('/looks/jawline?days=30', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-        }
-      });
-      if (jawlineRes.ok) {
-        const jawlineData = await jawlineRes.json();
-        setJawlineData(jawlineData);
-      }
-
-      // Fetch goals
-      const goalsRes = await fetch('/looks/goals', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-        }
-      });
-      if (goalsRes.ok) {
-        const goalsData = await goalsRes.json();
-        setGoals(goalsData);
-      }
-
-      // Fetch templates
-      const templatesRes = await fetch('/templates', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-        }
-      });
-      if (templatesRes.ok) {
-        const templatesData = await templatesRes.json();
-        setTemplates(templatesData);
-      }
-    } catch (error) {
-      console.error('Error fetching looksmax data:', error);
-      toast.error('Failed to load looksmax data');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Filter templates based on selected filter
-  const filteredTemplates = useMemo(() => {
-    if (filter === 'all') return templates;
-    if (filter === 'my') return templates.filter(t => !t.is_global && t.user_id === user?.id);
-    return templates.filter(t => t.type === filter && t.is_global);
-  }, [templates, filter, user?.id]);
-
-  const handleFilterChange = (newFilter) => {
-    setFilter(newFilter);
-  };
-
-  const handleStartWorkout = async (templateId) => {
-    try {
-      const response = await fetch(`/templates/${templateId}/start`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-        }
-      });
-      if (response.ok) {
-        const workoutData = await response.json();
-        toast.success('Workout started from template');
-        navigate(`/workouts/${workoutData.id}`);
-      } else {
-        throw new Error('Failed to start workout');
-      }
-    } catch (error) {
-      console.error('Error starting workout:', error);
-      toast.error('Failed to start workout from template');
-    }
-  };
+  const completedCount = useMemo(() => countCompleted(checklistItems), [checklistItems]);
 
   const handleToggleCheckbox = async (section, item, value) => {
-    if (!checklist) return;
-
-    // Create a copy of the items
-    const items = JSON.parse(checklist.items);
-    items[section][item] = value;
-
+    const next = {
+      ...checklistItems,
+      [section]: { ...checklistItems[section], [item]: value },
+    };
+    setChecklist((prev) => (prev ? { ...prev, items: JSON.stringify(next) } : prev));
     try {
-      const res = await fetch('/looks/checklist/today', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-        },
-        body: JSON.stringify({ items: JSON.stringify(items) })
-      });
-
-      if (res.ok) {
-        // Update local state
-        setChecklist(prev => ({
-          ...prev,
-          items: JSON.stringify(items)
-        }));
-      } else {
-        throw new Error('Failed to update checklist');
-      }
+      await updateTodayChecklist(next);
     } catch (error) {
-      console.error('Error updating checklist:', error);
-      toast.error('Failed to save checklist item');
+      console.error(error);
+      toast.error('Failed to save checklist');
+      fetchData();
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[var(--bg)] p-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--accent)]"></div>
-        </div>
-      </div>
+      <PageWrapper>
+        <header className="space-y-2">
+          <p className="section-label">Tactical aesthetics</p>
+          <h1 className="text-3xl font-semibold text-white">Looks Command</h1>
+        </header>
+        <LooksSkeleton />
+      </PageWrapper>
     );
   }
 
   return (
-    <>
-      <div className="min-h-screen bg-[var(--bg)] p-6">
-      {/* Tabs */}
-      <div className="mb-6 flex flex-wrap gap-2">
-        {[
-          { id: 'overview', label: 'Overview' },
-          { id: 'skin', label: 'Skin' },
-          { id: 'hair', label: 'Hair' },
-          { id: 'jawline', label: 'Jawline' },
-          { id: 'grooming', label: 'Grooming' },
-          { id: 'style', label: 'Style' },
-          { id: 'goals', label: 'Goals' }
-        ].map(tab => (
+    <PageWrapper>
+      <header className="space-y-2">
+        <p className="section-label">Tactical aesthetics</p>
+        <h1 className="text-3xl font-semibold text-white">Looks Command</h1>
+        <p className="text-sm text-[var(--text-secondary)]">
+          Optimize appearance systems — skin, structure, grooming, and style.
+        </p>
+      </header>
+
+      {loadError && (
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--text-secondary)]">
+          {loadError}
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        {TABS.map((tab) => (
           <button
             key={tab.id}
+            type="button"
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-all
-              ${activeTab === tab.id
-                ? 'bg-[var(--accent)] text-white'
-                : 'bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-2)]'}`}
+            className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
+              activeTab === tab.id
+                ? 'bg-[var(--accent)] text-white shadow-[0_0_16px_rgba(220,20,60,0.35)]'
+                : 'bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-2)]'
+            }`}
           >
             {tab.label}
           </button>
         ))}
-        <Button
-          onClick={() => setCreateOpen(true)}
-          className="ml-auto px-4 py-2 rounded-full text-sm font-medium transition-all bg-[var(--accent)] text-white"
-        >
-          Create Template
-        </Button>
       </div>
 
-      {/* Template Filters */}
-      {activeTab === 'overview' && (
-        <div className="mb-6 flex gap-2 flex-wrap">
-          <Button
-            onClick={() => handleFilterChange('all')}
-            className={`px-4 py-2 rounded-full text-sm transition-all ${
-              filter === 'all'
-                ? 'bg-[var(--accent)] text-white'
-                : 'bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-2)]'
-            }`}
-          >
-            All
-          </Button>
-          <Button
-            onClick={() => handleFilterChange('ppl')}
-            className={`px-4 py-2 rounded-full text-sm transition-all ${
-              filter === 'ppl'
-                ? 'bg-[var(--accent)] text-white'
-                : 'bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-2)]'
-            }`}
-          >
-            PPL
-          </Button>
-          <Button
-            onClick={() => handleFilterChange('strength')}
-            className={`px-4 py-2 rounded-full text-sm transition-all ${
-              filter === 'strength'
-                ? 'bg-[var(--accent)] text-white'
-                : 'bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-2)]'
-            }`}
-          >
-            Strength
-          </Button>
-          <Button
-            onClick={() => handleFilterChange('beginner')}
-            className={`px-4 py-2 rounded-full text-sm transition-all ${
-              filter === 'beginner'
-                ? 'bg-[var(--accent)] text-white'
-                : 'bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-2)]'
-            }`}
-          >
-            Beginner
-          </Button>
-          {user && (
-            <Button
-              onClick={() => handleFilterChange('my')}
-              className={`px-4 py-2 rounded-full text-sm transition-all ${
-                filter === 'my'
-                  ? 'bg-[var(--accent)] text-white'
-                  : 'bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-2)]'
-              }`}
-            >
-              My Templates
-            </Button>
-          )}
-        </div>
-      )}
-
-      {/* Templates Grid */}
-      {activeTab === 'overview' && (
-        <div className="grid gap-6 xl:grid-cols-[repeat(3,minmax(0,1fr))]">
-          {filteredTemplates.length === 0 ? (
-            <Card className="col-span-3">
-              <div className="text-center py-12">
-                <p className="text-[var(--text-secondary)]">
-                  No templates found. Try a different filter or create your first template.
-                </p>
-              </div>
-            </Card>
-          ) : (
-            filteredTemplates.map((template) => (
-              <Card
-                key={template.id}
-                className="group hover:shadow-[0_0_20px_rgba(220,20,60,0.15)] hover:border-[var(--border-strong)] cursor-pointer"
-                onClick={() => {
-                  // Navigate to template detail view or start workout?
-                  // For now, let's start workout directly
-                  handleStartWorkout(template.id);
-                }}
-              >
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <p className="font-semibold text-white text-lg">{template.name}</p>
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        template.type === 'ppl'
-                          ? 'bg-green-600/20 text-green-400'
-                          : template.type === 'strength'
-                            ? 'bg-blue-600/20 text-blue-400'
-                            : template.type === 'beginner'
-                              ? 'bg-purple-600/20 text-purple-400'
-                              : 'bg-gray-600/20 text-gray-400'
-                      }`}>
-                        {template.type.toUpperCase()}
-                      </span>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleStartWorkout(template.id);
-                      }}
-                    >
-                      Start
-                    </Button>
-                  </div>
-
-                  {template.description && (
-                    <p className="text-[var(--text-secondary)] text-sm line-clamp-2">
-                      {template.description}
-                    </p>
-                  )}
-
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {template.exercises?.map((exerciseId) => {
-                      const exercise = exercises.find((ex) => ex.id === exerciseId);
-                      if (!exercise) return null;
-                      return (
-                        <span
-                          key={exerciseId}
-                          className="rounded-full bg-[var(--surface-2)] px-3 py-1 text-xs uppercase tracking-[0.2em] text-[var(--text-secondary)]"
-                        >
-                          {exercise.name}
-                        </span>
-                      );
-                    })}
-                  </div>
-
-                  <p className="text-xs text-[var(--text-secondary)] mt-2">
-                    {template.exercises?.length} exercises
-                  </p>
-                </div>
-              </Card>
-            ))
-          )}
-        </div>
-      )}
-
-      {/* Tab Content */}
-      {activeTab === 'overview' && (
-        <OverviewTab
-          checklist={checklist}
-          stats={stats}
-          onToggleCheckbox={handleToggleCheckbox}
-        />
-      )}
-      {activeTab === 'skin' && (
-        <SkinTab
-          skinData={skinData}
-        />
-      )}
-      {activeTab === 'hair' && (
-        <HairTab
-          hairData={hairData}
-        />
-      )}
-      {activeTab === 'jawline' && (
-        <JawlineTab
-          jawlineData={jawlineData}
-        />
-      )}
-      {activeTab === 'grooming' && (
-        <GroomingTab />
-      )}
-      {activeTab === 'style' && (
-        <StyleTab />
-      )}
-      {activeTab === 'goals' && (
-        <GoalsTab
-          goals={goals}
-        />
-      )}
-    </div>
-      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Create Workout Template">
-        <form className="space-y-6" onSubmit={handleSubmit(onCreateTemplate)}>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Input
-              placeholder="Template name"
-              {...register('name')}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.25 }}
+        >
+          {activeTab === 'overview' && (
+            <OverviewTab
+              checklistItems={checklistItems}
+              stats={stats}
+              completedCount={completedCount}
+              onToggleCheckbox={handleToggleCheckbox}
             />
-            <Input
-              placeholder="Description (optional)"
-              {...register('description')}
-            />
-          </div>
-
-          <div className="space-y-4">
-            <p className="font-semibold text-white mb-2">Template Type</p>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {[
-                { value: 'ppl', label: 'PPL' },
-                { value: 'strength', label: 'Strength' },
-                { value: 'beginner', label: 'Beginner' },
-                { value: 'custom', label: 'Custom' }
-              ].map((type) => (
-                <label key={type.value} className="flex items-center gap-3">
-                  <input
-                    type="radio"
-                    value={type.value}
-                    checked={register('type').value === type.value}
-                    onChange={(e) => {
-                      // Let react-hook-form handle the change
-                    }}
-                    className="h-4 w-4 text-[var(--accent)] rounded-border"
-                  />
-                  <span className="text-[var(--text-primary)]">{type.label}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <p className="font-semibold text-white mb-2">Select Exercises</p>
-            <div className="grid gap-3">
-              {exercises.map((exercise) => (
-                <label key={exercise.id} className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    value={exercise.id}
-                    checked={register('exercises').value?.includes(exercise.id) || false}
-                    onChange={(e) => {
-                      // Let react-hook-form handle the change via onChange
-                    }}
-                    className="h-4 w-4 text-[var(--accent)] rounded-border"
-                  />
-                  <span className="text-[var(--text-primary)]">{exercise.name}</span>
-                </label>
-              ))}
-            </div>
-            <p className="text-[var(--text-secondary)] text-sm mt-2">
-              Hold Ctrl/Cmd to select multiple exercises
-            </p>
-          </div>
-
-          {Object.values(errors)[0] && (
-            <p className="text-sm text-[var(--accent)]">
-              {Object.values(errors)[0].message}
-            </p>
           )}
-
-          <Button
-            disabled={isSubmitting}
-            className="w-full"
-          >
-            {isSubmitting ? 'Creating...' : 'Create Template'}
-          </Button>
-        </form>
-      </Modal>
-
-      <Toaster position="top-right" />
-    </>
+          {activeTab === 'skin' && (
+            <SkinTab skinData={skinData} onRefresh={fetchData} />
+          )}
+          {activeTab === 'hair' && (
+            <HairTab hairData={hairData} onRefresh={fetchData} />
+          )}
+          {activeTab === 'jawline' && (
+            <JawlineTab jawlineData={jawlineData} onRefresh={fetchData} />
+          )}
+          {activeTab === 'grooming' && <GroomingTab />}
+          {activeTab === 'style' && <StyleTab />}
+          {activeTab === 'goals' && (
+            <GoalsTab goals={goals} onRefresh={fetchData} />
+          )}
+        </motion.div>
+      </AnimatePresence>
+    </PageWrapper>
   );
 }
 
-// Overview Tab Component
-function OverviewTab({ checklist, stats, onToggleCheckbox }) {
-  if (!checklist || !stats) {
-    return <div>Loading...</div>;
-  }
-
-  const items = JSON.parse(checklist.items);
-  const completedCount =
-    Object.values(items.morning).filter(v => v).length +
-    Object.values(items.throughout_day).filter(v => v).length +
-    Object.values(items.evening).filter(v => v).length;
-  const totalItems = 15; // 6 morning + 4 throughout + 5 evening
+function OverviewTab({ checklistItems, stats, completedCount, onToggleCheckbox }) {
+  const safeStats = stats || {
+    skin_streak: 0,
+    jawline_streak: 0,
+    avg_sleep_hours: 0,
+    avg_water_intake: 0,
+  };
 
   return (
     <div className="space-y-6">
-      {/* Batman Quote */}
-      <div className="text-center py-8">
-        <p className="text-[var(--text-secondary)] italic">
-          "Discipline separates Bruce Wayne from everyone else."
+      <Card className="border-[var(--border-strong)] bg-gradient-to-br from-[var(--surface)] to-[var(--surface-2)] p-6">
+        <p className="text-center italic text-[var(--text-secondary)]">
+          &ldquo;Discipline separates Bruce Wayne from everyone else.&rdquo;
         </p>
+        <div className="mt-6">
+          <ProgressBar value={completedCount} max={TOTAL_CHECKLIST} label="Daily protocol completion" />
+        </div>
+      </Card>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          { label: 'Skin streak', value: `${safeStats.skin_streak}d` },
+          { label: 'Jawline streak', value: `${safeStats.jawline_streak}d` },
+          { label: 'Avg sleep', value: `${safeStats.avg_sleep_hours}h` },
+          { label: 'Avg water', value: `${safeStats.avg_water_intake}ml` },
+        ].map((s) => (
+          <Card key={s.label} className="p-4">
+            <p className="text-xs uppercase tracking-widest text-[var(--text-secondary)]">{s.label}</p>
+            <p className="mt-2 text-2xl font-semibold text-[var(--accent)]">{s.value}</p>
+          </Card>
+        ))}
       </div>
 
-      {/* Stats Row */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card className="p-4">
-          <p className="text-[var(--text-secondary)] text-sm">Skin Routine Streak</p>
-          <p className="text-2xl font-semibold text-[var(--accent)]">{stats.skin_streak} days</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-[var(--text-secondary)] text-sm">Jawline Routine Streak</p>
-          <p className="text-2xl font-semibold text-[var(--accent)]">{stats.jawline_streak} days</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-[var(--text-secondary)] text-sm">Avg Sleep This Week</p>
-          <p className="text-2xl font-semibold text-[var(--accent)]">{stats.avg_sleep_hours} hrs</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-[var(--text-secondary)] text-sm">Avg Water This Week</p>
-          <p className="text-2xl font-semibold text-[var(--accent)]">{stats.avg_water_intake}ml</p>
-        </Card>
-      </div>
-
-      {/* Daily Checklist Card */}
       <Card className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 class="text-xl font-semibold text-white">Daily Checklist</h2>
-          <div className="flex items-center gap-3">
-            <div className="relative w-10 h-10">
-              <svg className="absolute inset-0" viewBox="0 0 24 24" stroke="var(--text-secondary)" strokeWidth={2} fill="none">
-                <circle cx="12" cy="12" r="10" />
-                <path
-                  strokeDasharray={`${(completedCount / totalItems) * 2 * Math.PI * 10} 62.8`}
-                  stroke="var(--accent)"
-                  strokeWidth={2}
-                  strokeLinecap="round"
-                  transform="rotate(-90 12 12)"
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center text-[var(--accent)] font-bold text-2xl">
-                {completedCount}/{totalItems}
-              </div>
-            </div>
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+          <h2 className="text-xl font-semibold text-white">Daily Checklist</h2>
+          <div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-[var(--accent)] text-sm font-bold text-[var(--accent)]">
+            {completedCount}/{TOTAL_CHECKLIST}
           </div>
         </div>
 
-        {/* Checklist Groups */}
-        <div className="space-y-4">
-          {/* Morning */}
-          <div>
-            <h3 className="font-semibold text-[var(--accent)] mb-2">MORNING</h3>
-            <div className="space-y-2">
-              {[
-                { id: 'face_wash', label: 'Face wash' },
-                { id: 'moisturiser', label: 'Moisturiser' },
-                { id: 'sunscreen', label: 'Sunscreen (SPF 50+)' },
-                { id: 'mewing', label: 'Mewing (tongue on roof of mouth all morning)' },
-                { id: 'cold_shower', label: 'Cold shower' },
-                { id: 'hair_styling', label: 'Hair styling' }
-              ].map(item => (
-                <div key={item.id} className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    checked={items.morning[item.id] || false}
-                    onChange={(e) => onToggleCheckbox('morning', item.id, e.target.checked)}
-                    className="h-4 w-4 text-[var(--accent)] focus:ring-[var(--accent)] border-[var(--border)] rounded"
-                  />
-                  <span className="text-[var(--text-secondary)]">{item.label}</span>
-                </div>
-              ))}
+        <div className="space-y-6">
+          {[
+            { key: 'morning', title: 'MORNING', items: [
+              { id: 'face_wash', label: 'Face wash' },
+              { id: 'moisturiser', label: 'Moisturiser' },
+              { id: 'sunscreen', label: 'Sunscreen (SPF 50+)' },
+              { id: 'mewing', label: 'Mewing' },
+              { id: 'cold_shower', label: 'Cold shower' },
+              { id: 'hair_styling', label: 'Hair styling' },
+            ]},
+            { key: 'throughout_day', title: 'THROUGHOUT DAY', items: [
+              { id: 'water_intake', label: '3L+ water intake' },
+              { id: 'posture_check', label: 'Posture check' },
+              { id: 'chewing_gum', label: 'Chewing gum (jawline)' },
+              { id: 'no_junk_food', label: 'No junk food' },
+            ]},
+            { key: 'evening', title: 'EVENING', items: [
+              { id: 'face_wash_pm', label: 'Face wash PM' },
+              { id: 'moisturiser_pm', label: 'Moisturiser PM' },
+              { id: 'gua_sha', label: 'Gua sha (5 min)' },
+              { id: 'sleep_target', label: '7–9 hours sleep' },
+              { id: 'hair_oil', label: 'Hair oil (wash day)' },
+            ]},
+          ].map((group) => (
+            <div key={group.key}>
+              <h3 className="mb-3 text-sm font-semibold tracking-widest text-[var(--accent)]">{group.title}</h3>
+              <div className="space-y-2">
+                {group.items.map((item) => (
+                  <label key={item.id} className="flex cursor-pointer items-center gap-3 rounded-xl px-2 py-1.5 hover:bg-[var(--surface-2)]">
+                    <input
+                      type="checkbox"
+                      checked={!!checklistItems[group.key]?.[item.id]}
+                      onChange={(e) => onToggleCheckbox(group.key, item.id, e.target.checked)}
+                      className="h-4 w-4 rounded border-[var(--border)] text-[var(--accent)] focus:ring-[var(--accent)]"
+                    />
+                    <span className="text-[var(--text-secondary)]">{item.label}</span>
+                  </label>
+                ))}
+              </div>
             </div>
-          </div>
-
-          {/* Throughout Day */}
-          <div>
-            <h3 className="font-semibold text-[var(--accent)] mb-2">THROUGHOUT DAY</h3>
-            <div className="space-y-2">
-              {[
-                { id: 'water_intake', label: '3L+ water intake' },
-                { id: 'posture_check', label: 'Posture check (sitting/standing tall)' },
-                { id: 'chewing_gum', label: 'Chewing gum (jawline)' },
-                { id: 'no_junk_food', label: 'No junk food' }
-              ].map(item => (
-                <div key={item.id} className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    checked={items.throughout_day[item.id] || false}
-                    onChange={(e) => onToggleCheckbox('throughout_day', item.id, e.target.checked)}
-                    className="h-4 w-4 text-[var(--accent)] focus:ring-[var(--accent)] border-[var(--border)] rounded"
-                  />
-                  <span className="text-[var(--text-secondary)]">{item.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Evening */}
-          <div>
-            <h3 className="font-semibold text-[var(--accent)] mb-2">EVENING</h3>
-            <div className="space-y-2">
-              {[
-                { id: 'face_wash_pm', label: 'Face wash PM' },
-                { id: 'moisturiser_pm', label: 'Moisturiser PM' },
-                { id: 'gua_sha', label: 'Gua sha (5 min jawline massage)' },
-                { id: 'sleep_target', label: '7-9 hours sleep target' },
-                { id: 'hair_oil', label: 'Hair oil (if wash day)' }
-              ].map(item => (
-                <div key={item.id} className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    checked={items.evening[item.id] || false}
-                    onChange={(e) => onToggleCheckbox('evening', item.id, e.target.checked)}
-                    className="h-4 w-4 text-[var(--accent)] focus:ring-[var(--accent)] border-[var(--border)] rounded"
-                  />
-                  <span className="text-[var(--text-secondary)]">{item.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          ))}
         </div>
       </Card>
     </div>
   );
 }
 
-// Placeholder components for other tabs
-function SkinTab({ skinData }) {
+function SkinTab({ skinData, onRefresh }) {
+  const [form, setForm] = useState({ water_intake_ml: '', sleep_hours: '', notes: '' });
+  const [saving, setSaving] = useState(false);
+
+  const chartData = useMemo(
+    () =>
+      [...skinData]
+        .slice(0, 14)
+        .reverse()
+        .map((log) => ({
+          date: format(parseISO(log.date), 'MMM d'),
+          water: log.water_intake_ml || 0,
+          sleep: log.sleep_hours || 0,
+        })),
+    [skinData]
+  );
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await createSkinLog({
+        water_intake_ml: form.water_intake_ml ? Number(form.water_intake_ml) : null,
+        sleep_hours: form.sleep_hours ? Number(form.sleep_hours) : null,
+        notes: form.notes || null,
+      });
+      toast.success('Skin log saved');
+      setForm({ water_intake_ml: '', sleep_hours: '', notes: '' });
+      onRefresh();
+    } catch {
+      toast.error('Failed to save skin log');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-semibold text-[var(--accent)]">Skin Routine</h2>
-      <p className="text-[var(--text-secondary)]">Skin tab content coming soon...</p>
+      <Card className="p-6">
+        <h2 className="text-xl font-semibold text-white">Log skin protocol</h2>
+        <form onSubmit={onSubmit} className="mt-4 grid gap-4 sm:grid-cols-3">
+          <Input placeholder="Water (ml)" type="number" value={form.water_intake_ml} onChange={(e) => setForm((f) => ({ ...f, water_intake_ml: e.target.value }))} />
+          <Input placeholder="Sleep (hours)" type="number" step="0.5" value={form.sleep_hours} onChange={(e) => setForm((f) => ({ ...f, sleep_hours: e.target.value }))} />
+          <Input placeholder="Notes" value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} />
+          <Button type="submit" disabled={saving} className="sm:col-span-3">
+            {saving ? 'Saving...' : 'Save log'}
+          </Button>
+        </form>
+      </Card>
+
+      {chartData.length > 0 ? (
+        <Card className="p-6">
+          <p className="section-label mb-4">Hydration & recovery</p>
+          <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData}>
+                <XAxis dataKey="date" stroke="#7a7a9a" fontSize={11} />
+                <YAxis stroke="#7a7a9a" fontSize={11} />
+                <Tooltip contentStyle={{ background: '#141420', border: '1px solid rgba(220,20,60,0.3)' }} />
+                <Area type="monotone" dataKey="water" stroke="#DC143C" fill="rgba(220,20,60,0.2)" name="Water (ml)" />
+                <Area type="monotone" dataKey="sleep" stroke="#7a7a9a" fill="rgba(122,122,154,0.15)" name="Sleep (h)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      ) : (
+        <EmptyState title="No skin logs yet" description="Log water and sleep to unlock trend charts." />
+      )}
+
       {skinData.length > 0 && (
-        <div className="mt-4">
-          <h3 className="font-semibold text-[var(--accent)]">Recent Skin Logs</h3>
-          <div className="space-y-2">
-            {skinData.slice(0, 5).map(log => (
-              <div key={log.id} className="p-3 bg-[var(--surface)] rounded-md">
-                <p className="text-[var(--text-secondary)] text-sm">
-                  {new Date(log.date).toLocaleDateString()} -
-                  Water: {log.water_intake_ml || 0}ml |
-                  Sleep: {log.sleep_hours || 0}hrs
-                </p>
-              </div>
-            ))}
-          </div>
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold text-[var(--accent)]">Recent logs</h3>
+          {skinData.slice(0, 8).map((log) => (
+            <Card key={log.id} className="p-3 text-sm text-[var(--text-secondary)]">
+              {format(parseISO(log.date), 'PP')} — Water: {log.water_intake_ml || 0}ml | Sleep: {log.sleep_hours || 0}h
+            </Card>
+          ))}
         </div>
       )}
     </div>
   );
 }
 
-function HairTab({ hairData }) {
+function HairTab({ hairData, onRefresh }) {
+  const [washed, setWashed] = useState(false);
+  const [oiled, setOiled] = useState(false);
+  const [notes, setNotes] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await createHairLog({ washed, oiled, notes: notes || null });
+      toast.success('Hair log saved');
+      setNotes('');
+      onRefresh();
+    } catch {
+      toast.error('Failed to save hair log');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-semibold text-[var(--accent)]">Hair Routine</h2>
-      <p className="text-[var(--text-secondary)]">Hair tab content coming soon...</p>
-      {hairData.length > 0 && (
-        <div className="mt-4">
-          <h3 className="font-semibold text-[var(--accent)]">Recent Hair Logs</h3>
-          <div className="space-y-2">
-            {hairData.slice(0, 5).map(log => (
-              <div key={log.id} className="p-3 bg-[var(--surface)] rounded-md">
-                <p className="text-[var(--text-secondary)] text-sm">
-                  {new Date(log.date).toLocaleDateString()} -
-                  Washed: {log.washed ? 'Yes' : 'No'} |
-                  Oiled: {log.oiled ? 'Yes' : 'No'}
-                </p>
-              </div>
-            ))}
-          </div>
+      <Card className="p-6">
+        <h2 className="text-xl font-semibold text-white">Hair routine log</h2>
+        <form onSubmit={onSubmit} className="mt-4 space-y-4">
+          <label className="flex items-center gap-3">
+            <input type="checkbox" checked={washed} onChange={(e) => setWashed(e.target.checked)} className="h-4 w-4 text-[var(--accent)]" />
+            <span className="text-[var(--text-secondary)]">Washed today</span>
+          </label>
+          <label className="flex items-center gap-3">
+            <input type="checkbox" checked={oiled} onChange={(e) => setOiled(e.target.checked)} className="h-4 w-4 text-[var(--accent)]" />
+            <span className="text-[var(--text-secondary)]">Oiled / treated</span>
+          </label>
+          <Input placeholder="Products / notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+          <Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save log'}</Button>
+        </form>
+      </Card>
+
+      {hairData.length === 0 ? (
+        <EmptyState title="No hair logs" description="Track wash days and oil treatments to build consistency." />
+      ) : (
+        <div className="space-y-2">
+          {hairData.slice(0, 8).map((log) => (
+            <Card key={log.id} className="p-3 text-sm text-[var(--text-secondary)]">
+              {format(parseISO(log.date), 'PP')} — Washed: {log.washed ? 'Yes' : 'No'} | Oiled: {log.oiled ? 'Yes' : 'No'}
+            </Card>
+          ))}
         </div>
       )}
     </div>
   );
 }
 
-function JawlineTab({ jawlineData }) {
+function JawlineTab({ jawlineData, onRefresh }) {
+  const [form, setForm] = useState({ mewing_minutes: '', gua_sha: false, chewing_gum_minutes: '' });
+  const [saving, setSaving] = useState(false);
+
+  const chartData = useMemo(
+    () =>
+      [...jawlineData]
+        .slice(0, 10)
+        .reverse()
+        .map((log) => ({
+          date: format(parseISO(log.date), 'MMM d'),
+          mewing: log.mewing_minutes || 0,
+          chewing: log.chewing_gum_minutes || 0,
+        })),
+    [jawlineData]
+  );
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await createJawlineLog({
+        mewing_minutes: form.mewing_minutes ? Number(form.mewing_minutes) : 0,
+        gua_sha: form.gua_sha,
+        chewing_gum_minutes: form.chewing_gum_minutes ? Number(form.chewing_gum_minutes) : 0,
+      });
+      toast.success('Jawline log saved');
+      setForm({ mewing_minutes: '', gua_sha: false, chewing_gum_minutes: '' });
+      onRefresh();
+    } catch {
+      toast.error('Failed to save jawline log');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-semibold text-[var(--accent)]">Jawline Routine</h2>
-      <p className="text-[var(--text-secondary)]">Jawline tab content coming soon...</p>
-      {jawlineData.length > 0 && (
-        <div className="mt-4">
-          <h3 className="font-semibold text-[var(--accent)]">Recent Jawline Logs</h3>
-          <div className="space-y-2">
-            {jawlineData.slice(0, 5).map(log => (
-              <div key={log.id} className="p-3 bg-[var(--surface)] rounded-md">
-                <p className="text-[var(--text-secondary)] text-sm">
-                  {new Date(log.date).toLocaleDateString()} -
-                  Mewing: {log.mewing_minutes} min |
-                  Gua Sha: {log.gua_sha ? 'Yes' : 'No'} |
-                  Chewing: {log.chewing_gum_minutes} min
-                </p>
-              </div>
-            ))}
+      <Card className="p-6">
+        <h2 className="text-xl font-semibold text-white">Jawline protocol</h2>
+        <form onSubmit={onSubmit} className="mt-4 grid gap-4 sm:grid-cols-2">
+          <Input placeholder="Mewing (minutes)" type="number" value={form.mewing_minutes} onChange={(e) => setForm((f) => ({ ...f, mewing_minutes: e.target.value }))} />
+          <Input placeholder="Chewing gum (minutes)" type="number" value={form.chewing_gum_minutes} onChange={(e) => setForm((f) => ({ ...f, chewing_gum_minutes: e.target.value }))} />
+          <label className="flex items-center gap-3 sm:col-span-2">
+            <input type="checkbox" checked={form.gua_sha} onChange={(e) => setForm((f) => ({ ...f, gua_sha: e.target.checked }))} className="h-4 w-4 text-[var(--accent)]" />
+            <span className="text-[var(--text-secondary)]">Gua sha completed</span>
+          </label>
+          <Button type="submit" disabled={saving} className="sm:col-span-2">{saving ? 'Saving...' : 'Save log'}</Button>
+        </form>
+      </Card>
+
+      {chartData.length > 0 ? (
+        <Card className="p-6">
+          <p className="section-label mb-4">Jaw training volume</p>
+          <div className="h-48">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData}>
+                <XAxis dataKey="date" stroke="#7a7a9a" fontSize={11} />
+                <YAxis stroke="#7a7a9a" fontSize={11} />
+                <Tooltip contentStyle={{ background: '#141420', border: '1px solid rgba(220,20,60,0.3)' }} />
+                <Bar dataKey="mewing" fill="#DC143C" name="Mewing (min)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="chewing" fill="rgba(122,122,154,0.8)" name="Chewing (min)" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
-        </div>
+        </Card>
+      ) : (
+        <EmptyState title="No jawline logs" description="Log mewing and chewing sessions to track structural work." />
       )}
     </div>
   );
 }
 
 function GroomingTab() {
+  const sections = [
+    { title: 'Eyebrows', tip: 'Trim to natural shape; remove strays between brows.' },
+    { title: 'Beard & facial hair', tip: 'Define neckline; oil daily; wash 2–3× weekly.' },
+    { title: 'Nose & ear hair', tip: 'Weekly trim with dedicated tool — never pluck deep.' },
+    { title: 'Teeth & smile', tip: 'Brush 2× daily, floss, scrape tongue, dentist every 6 months.' },
+    { title: 'Fragrance', tip: '1–2 sprays on pulse points; moisturize skin first.' },
+  ];
+
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-semibold text-[var(--accent)]">Grooming Guide</h2>
-      <p className="text-[var(--text-secondary)]">Master the essentials of male grooming for a polished, attractive appearance.</p>
-
-      {/* Grooming Sections */}
-      <div className="mt-6 space-y-8">
-        {/* Eyebrows */}
-        <div className="space-y-4">
-          <h3 className="font-semibold text-[var(--accent)] text-lg">Eyebrows</h3>
-          <p className="text-[var(--text-secondary)] mb-2">Well-groomed eyebrows frame your eyes and enhance facial structure.</p>
-          <div className="grid gap-3 md:grid-cols-2">
-            <div className="p-3 bg-[var(--surface)] rounded-md">
-              <p className="text-[var(--text-secondary)] text-sm">Do:</p>
-              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
-                <li>Trim to follow natural shape</li>
-                <li>Remove stray hairs between brows</li>
-                <li>Keep tails pointing slightly downward</li>
-                <li>Use brow gel to keep hairs in place</li>
-              </ul>
-            </div>
-            <div className="p-3 bg-[var(--surface)] rounded-md">
-              <p className="text-[var(--text-secondary)] text-sm">Don't:</p>
-              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
-                <li>Over-tweeze or create unnatural shapes</li>
-                <li>Make them too thin</li>
-                <li>Ignore the natural arch</li>
-                <li>Use dark products that look artificial</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        {/* Beard */}
-        <div className="space-y-4">
-          <h3 className="font-semibold text-[var(--accent)] text-lg">Beard & Facial Hair</h3>
-          <p className="text-[var(--text-secondary)] mb-2">A well-maintained beard enhances masculinity and jawline definition.</p>
-          <div className="grid gap-3 md:grid-cols-2">
-            <div className="p-3 bg-[var(--surface)] rounded-md">
-              <p className="text-[var(--text-secondary)] text-sm">Do:</p>
-              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
-                <li>Wash beard 2-3x per week with beard soap</li>
-                <li>Apply beard oil daily to moisturize skin and hair</li>
-                <li>Trim neckline and cheek lines for clean edges</li>
-                <li>Brush or comb daily to distribute oils</li>
-                <li>Define your cheek line and neckline</li>
-              </ul>
-            </div>
-            <div className="p-3 bg-[var(--surface)] rounded-md">
-              <p className="text-[var(--text-secondary)] text-sm">Don't:</p>
-              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
-                <li>Let it grow wild without maintenance</li>
-                <li>Use regular shampoo (dries out facial hair)</li>
-                <li>Neglect the neckline (creates "neckbeard")</li>
-                <li>Apply products to dirty beard</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        {/* Nose/Ear Hair */}
-        <div className="space-y-4">
-          <h3 className="font-semibold text-[var(--accent)] text-lg">Nose & Ear Hair</h3>
-          <p className="text-[var(--text-secondary)] mb-2">Visible nose and ear hair significantly detracts from an otherwise well-groomed appearance.</p>
-          <div className="grid gap-3 md:grid-cols-2">
-            <div className="p-3 bg-[var(--surface)] rounded-md">
-              <p className="text-[var(--text-secondary)] text-sm">Do:</p>
-              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
-                <li>Check weekly in good lighting</li>
-                <li>Use specialized nose/ear hair trimmer</li>
-                <li>Trim after shower when hairs are soft</li>
-                <li>Only trim visible hairs, don't go deep</li>
-                <li>Clean trimmer after each use</li>
-              </ul>
-            </div>
-            <div className="p-3 bg-[var(--surface)] rounded-md">
-              <p className="text-[var(--text-secondary)] text-sm">Don't:</p>
-              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
-                <li>Pluck hairs (can cause infection)</li>
-                <li>Use regular scissors (unsafe)</li>
-                <li>Trim too frequently (can cause irritation)</li>
-                <li>Ignore until it's visibly obvious</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        {/* Teeth */}
-        <div className="space-y-4">
-          <h3 className="font-semibold text-[var(--accent)] text-lg">Teeth & Smile</h3>
-          <p className="text-[var(--text-secondary)] mb-2">A healthy, clean smile is one of your most attractive features.</p>
-          <div className="grid gap-3 md:grid-cols-2">
-            <div className="p-3 bg-[var(--surface)] rounded-md">
-              <p className="text-[var(--text-secondary)] text-sm">Do:</p>
-              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
-                <li>Brush 2x daily for 2 minutes</li>
-                <li>Floss daily to remove plaque between teeth</li>
-                <li>Use tongue scraper to remove bacteria</li>
-                <li>Visit dentist every 6 months</li>
-                <li>Consider whitening for stained teeth</li>
-                <li>Fix any visible chips or cracks</li>
-              </ul>
-            </div>
-            <div className="p-3 bg-[var(--surface)] rounded-md">
-              <p className="text-[var(--text-secondary)] text-sm">Don't:</p>
-              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
-                <li>Brush immediately after acidic foods</li>
-                <li>Use tobacco products (stains and damages)</li>
-                <li>Ignore tooth pain or sensitivity</li>
-                <li>Use teeth as tools (opens bottles, etc.)</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        {/* Fragrance */}
-        <div className="space-y-4">
-          <h3 className="font-semibold text-[var(--accent)] text-lg">Fragrance</h3>
-          <p className="text-[var(--text-secondary)] mb-2">The right scent leaves a lasting impression; the wrong one can be overwhelming.</p>
-          <div className="grid gap-3 md:grid-cols-2">
-            <div className="p-3 bg-[var(--surface)] rounded-md">
-              <p className="text-[var(--text-secondary)] text-sm">Do:</p>
-              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
-                <li>Apply to pulse points (wrists, neck, chest)</li>
-                <li>Start with 1-2 sprays, you can always add more</li>
-                <li>Choose scents appropriate for occasion (day/night)</li>
-                <li>Moisturize skin first (helps scent last longer)</li>
-                <li>Store in cool, dark place to preserve quality</li>
-              </ul>
-            </div>
-            <div className="p-3 bg-[var(--surface)] rounded-md">
-              <p className="text-[var(--text-secondary)] text-sm">Don't:</p>
-              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
-                <li>Rub wrists together (breaks down scent molecules)</li>
-                <li>Apply to clothing (can stain and alter scent)</li>
-                <li>Overapply (more than 3-4 sprays is usually too much)</li>
-                <li>Apply to sweaty skin (can create unpleasant mix)</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div className="grid gap-4 md:grid-cols-2">
+      {sections.map((s) => (
+        <Card key={s.title} className="p-5">
+          <h3 className="text-lg font-semibold text-[var(--accent)]">{s.title}</h3>
+          <p className="mt-2 text-sm text-[var(--text-secondary)]">{s.tip}</p>
+        </Card>
+      ))}
     </div>
   );
 }
 
 function StyleTab() {
+  const sections = [
+    { title: 'Fit is everything', tip: 'Shoulder seams at bone edge; tapered waist; proper sleeve break.' },
+    { title: 'Color coordination', tip: 'Build on neutrals; one accent per outfit.' },
+    { title: 'Wardrobe essentials', tip: 'Quality white/blue shirts, dark denim, chinos, white sneakers, blazer.' },
+    { title: 'Dress your physique', tip: 'Highlight shoulders and chest; balance fitted top with relaxed bottom.' },
+  ];
+
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-semibold text-[var(--accent)]">Style Guide</h2>
-      <p className="text-[var(--text-secondary)]">Elevate your personal style to match your improved physique and appearance.</p>
-
-      {/* Style Sections */}
-      <div className="mt-6 space-y-8">
-        {/* Fit */}
-        <div className="space-y-4">
-          <h3 className="font-semibold text-[var(--accent)] text-lg">Fit is Everything</h3>
-          <p className="text-[var(--text-secondary)] mb-2">Proper fit is the most important aspect of style - it can make inexpensive clothes look expensive and expensive clothes look cheap.</p>
-          <div className="grid gap-3 md:grid-cols-2">
-            <div className="p-3 bg-[var(--surface)] rounded-md">
-              <p className="text-[var(--text-secondary)] text-sm">Do:</p>
-              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
-                <li>Shoulder seams should end at the edge of your shoulder</li>
-                <li>Sleeves should show about 1/2 inch of shirt cuff</li>
-                <li>Pants should break slightly at the shoe (or no break for modern look)</li>
-                <li>Shirts should be tapered to your waist (no billowing)</li>
-                <li>Jackets should button comfortably without pulling</li>
-              </ul>
-            </div>
-            <div className="p-3 bg-[var(--surface)] rounded-md">
-              <p className="text-[var(--text-secondary)] text-sm">Don't:</p>
-              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
-                <li>Wear clothes that are too tight (uncomfortable and unflattering)</li>
-                <li>Wear clothes that are too baggy (hides your physique)</li>
-                <li>Ignore proper sleeve and pant lengths</li>
-                <li>Buy off-the-rack without considering alterations</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        {/* Color Coordination */}
-        <div className="space-y-4">
-          <h3 className="font-semibold text-[var(--accent)] text-lg">Color Coordination</h3>
-          <p className="text-[var(--text-secondary)] mb-2">Understanding color theory helps you create cohesive, intentional outfits.</p>
-          <div className="grid gap-3 md:grid-cols-2">
-            <div className="p-3 bg-[var(--surface)] rounded-md">
-              <p className="text-[var(--text-secondary)] text-sm">Neutrals (Build Your Foundation):</p>
-              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
-                <li>Black, white, gray, navy, beige, olive</li>
-                <li>Easy to mix and match</li>
-                <li>Timeless and versatile</li>
-                <li>Invest in quality neutral pieces</li>
-              </ul>
-            </div>
-            <div className="p-3 bg-[var(--surface)] rounded-md">
-              <p className="text-[var(--text-secondary)] text-sm">Accent Colors:</p>
-              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
-                <li>Burgundy, forest green, mustard, cobalt blue</li>
-                <li>Use for pieces like sweaters, shirts, accessories</li>
-                <li>Complement your skin tone and hair color</li>
-                <li>Start with one accent color per outfit</li>
-              </ul>
-            </div>
-          </div>
-          <div className="mt-3 p-3 bg-[var(--surface)] rounded-md">
-            <p className="text-[var(--text-secondary)] text-sm">Color Combinations That Work:</p>
-            <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
-              <li>Navy + White + Tan (classic nautical)</li>
-              <li>Gray + Black + Red (monochrome with pop)</li>
-              <li>Olive + Beige + Brown (earth tones)</li>
-              <li>Black + White + Gold (luxury minimalist)</li>
-              <li>White + Light Blue + Brown (spring/summer)</li>
-            </ul>
-          </div>
-        </div>
-
-        {/* Wardrobe Essentials */}
-        <div className="space-y-4">
-          <h3 className="font-semibold text-[var(--accent)] text-lg">Wardrobe Essentials</h3>
-          <p className="text-[var(--text-secondary)] mb-2">Build a versatile foundation with these key pieces.</p>
-          <div className="grid gap-3 md:grid-cols-2">
-            <div className="p-3 bg-[var(--surface)] rounded-md">
-              <p className="text-[var(--text-secondary)] text-sm">Tops:</p>
-              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
-                <li>White and light blue dress shirts</li>
-                <li>Crew neck t-shirts (white, gray, black)</li>
-                <li>V-neck t-shirts (for layering)</li>
-                <li>Polo shirts (cotton or merino wool)</li>
-                <li>Sweaters (crew neck, V-neck, cardigan)</li>
-                <li>Henley shirts (casual alternative to t-shirts)</li>
-              </ul>
-            </div>
-            <div className="p-3 bg-[var(--surface)] rounded-md">
-              <p className="text-[var(--text-secondary)] text-sm">Bottoms:</p>
-              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
-                <li>Dark wash jeans (straight or slim fit)</li>
-                <li>Chinos (navy, olive, khaki)</li>
-                <li>Wool trousers (gray, navy, charcoal)</li>
-                <li>Shorts (tailored, not athletic)</li>
-                <li>Sweatpants (premium, tapered for athleisure)</li>
-              </ul>
-            </div>
-          </div>
-          <div className="grid gap-3 md:grid-cols-2 mt-3">
-            <div className="p-3 bg-[var(--surface)] rounded-md">
-              <p className="text-[var(--text-secondary)] text-sm">Outerwear:</p>
-              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
-                <li>Blazer (navy or charcoal)</li>
-                <li>Denim jacket (medium wash)</li>
-                <li>Bomber jacket (navy or black)</li>
-                <li>Wool overcoat (for winter)</li>
-                <li>Trench coat (beige, classic)</li>
-              </ul>
-            </div>
-            <div className="p-3 bg-[var(--surface)] rounded-md">
-              <p className="text-[var(--text-secondary)] text-sm">Shoes:</p>
-              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
-                <li>White leather sneakers (common projects, stan smith)</li>
-                <li>Brown leather brogues or derby shoes</li>
-                <li>Black leather dress shoes (oxfords)</li>
-                <li>Desert boots or chukka boots</li>
-                <li>Loafers (penny or tassel)</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        {/* Style for Body Types */}
-        <div className="space-y-4">
-          <h3 className="font-semibold text-[var(--accent)] text-lg">Dress for Your Physique</h3>
-          <p className="text-[var(--text-secondary)] mb-2">As your body changes with training, adjust your style to highlight your progress.</p>
-          <div className="grid gap-3 md:grid-cols-2">
-            <div className="p-3 bg-[var(--surface)] rounded-md">
-              <p className="text-[var(--text-secondary)] text-sm">For V-Taper (Wide Shoulders, Narrow Waist):</p>
-              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
-                <li>Fitted shirts to show off your taper</li>
-                <li>Structured jackets with shoulder definition</li>
-                <li>Straight or slim jeans to balance proportions</li>
-                <li>V-necks to draw eye upward to chest</li>
-                <li>Avoid overly baggy clothes that hide your shape</li>
-              </ul>
-            </div>
-            <div className="p-3 bg-[var(--surface)] rounded-md">
-              <p className="text-[var(--text-secondary)] text-sm">For Strong Legs (Developed Quads/Hams):</p>
-              <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
-                <li>Straight or tapered pants (not skinny)</li>
-                <li>Shorts that hit above the knee</li>
-                <li>Consider cuffing pants to show off footwear</li>
-                <li>Avoid tapered ankles that look constricted</li>
-                <li>Dark wash jeans to createLengthening effect</li>
-              </ul>
-            </div>
-          </div>
-          <div className="mt-3 p-3 bg-[var(--surface)] rounded-md">
-            <p className="text-[var(--text-secondary)] text-sm">General Principles:</p>
-            <ul className="list-disc list-inside text-[var(--text-secondary)] text-sm mt-1">
-              <li>Clothes should follow your natural lines, not fight them</li>
-              <li>Highlight your best features (shoulders, chest, arms)</li>
-              <li>Create balance - if top is fitted, bottom can be slightly relaxed</li>
-              <li>Invest in tailoring as your physique changes</li>
-              <li>Quality over quantity - build a versatile wardrobe slowly</li>
-            </ul>
-          </div>
-        </div>
-      </div>
+    <div className="grid gap-4 md:grid-cols-2">
+      {sections.map((s) => (
+        <Card key={s.title} className="p-5">
+          <h3 className="text-lg font-semibold text-[var(--accent)]">{s.title}</h3>
+          <p className="mt-2 text-sm text-[var(--text-secondary)]">{s.tip}</p>
+        </Card>
+      ))}
     </div>
   );
 }
 
-function GoalsTab({ goals }) {
+function GoalsTab({ goals, onRefresh }) {
+  const [form, setForm] = useState({
+    goal_text: '',
+    category: 'skin',
+    target_date: '',
+    priority: 'medium',
+  });
+  const [saving, setSaving] = useState(false);
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.goal_text.trim()) {
+      toast.error('Enter a goal');
+      return;
+    }
+    setSaving(true);
+    try {
+      await createLooksGoal({
+        goal_text: form.goal_text,
+        category: form.category,
+        target_date: form.target_date || null,
+        completed: false,
+      });
+      toast.success('Goal added');
+      setForm({ goal_text: '', category: 'skin', target_date: '', priority: 'medium' });
+      onRefresh();
+    } catch {
+      toast.error('Failed to add goal');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleGoal = async (goal) => {
+    try {
+      await updateLooksGoal(goal.id, { completed: !goal.completed });
+      onRefresh();
+    } catch {
+      toast.error('Failed to update goal');
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-semibold text-[var(--accent)]">Looks Goals</h2>
-      <p className="text-[var(--text-secondary)]">Manage your appearance-related goals here.</p>
-
-      {/* Add Goal Form (simplified) */}
-      <div className="mt-6">
-        <h3 className="font-semibold text-[var(--accent)] mb-4">Add New Goal</h3>
-        <form className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Input
-              placeholder="Goal text"
-            />
-            <select
-              className="w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-[var(--text-primary)]"
-            >
-              <option value="skin">Skin</option>
-              <option value="hair">Hair</option>
-              <option value="jawline">Jawline</option>
-              <option value="posture">Posture</option>
-              <option value="style">Style</option>
-              <option value="grooming">Grooming</option>
-            </select>
-            <Input
-              type="date"
-              placeholder="Target date"
-            />
-            <select
-              className="w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-[var(--text-primary)]"
-            >
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
-            </select>
-          </div>
-          <Button className="w-full">Add Goal</Button>
-        </form>
-      </div>
-
-      {/* Goals List */}
-      <div className="mt-6">
-        <h3 className="font-semibold text-[var(--accent)] mb-4">Your Goals</h3>
-        {goals.length === 0 ? (
-          <p className="text-[var(--text-secondary)]">No goals yet. Add your first goal above.</p>
-        ) : (
-          <div className="space-y-3">
-            {goals.map(goal => (
-              <div key={goal.id} className="p-4 bg-[var(--surface)] rounded-md">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      checked={goal.completed || false}
-                      className="h-4 w-4 text-[var(--accent)] focus:ring-[var(--accent)] border-[var(--border)] rounded"
-                    />
-                    <div>
-                      <p className="font-semibold text-[var(--text-primary)]">{goal.goal_text}</p>
-                      <p className="text-[var(--text-secondary)] text-sm">
-                        {goal.category} • Target: {goal.target_date ? new Date(goal.target_date).toLocaleDateString() : 'No date'}
-                      </p>
-                    </div>
-                  </div>
-                  <span className={`text-sm px-2 py-1 rounded-full
-                    ${goal.completed
-                      ? 'bg-[var(--accent)]/20 text-[var(--accent)]'
-                      : 'bg-[var(--surface-2)] text-[var(--text-secondary)]'}`}>
-                    {goal.completed ? 'Completed' : 'Pending'}
-                  </span>
-                </div>
-              </div>
+      <Card className="p-6">
+        <h2 className="text-xl font-semibold text-white">Add goal</h2>
+        <form onSubmit={onSubmit} className="mt-4 grid gap-4 sm:grid-cols-2">
+          <Input placeholder="Goal" value={form.goal_text} onChange={(e) => setForm((f) => ({ ...f, goal_text: e.target.value }))} className="sm:col-span-2" />
+          <select
+            className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-[var(--text-primary)]"
+            value={form.category}
+            onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+          >
+            {['skin', 'hair', 'jawline', 'posture', 'style', 'grooming'].map((c) => (
+              <option key={c} value={c}>{c}</option>
             ))}
-          </div>
-        )}
-      </div>
+          </select>
+          <Input type="date" value={form.target_date} onChange={(e) => setForm((f) => ({ ...f, target_date: e.target.value }))} />
+          <Button type="submit" disabled={saving} className="sm:col-span-2">{saving ? 'Saving...' : 'Add goal'}</Button>
+        </form>
+      </Card>
+
+      {goals.length === 0 ? (
+        <EmptyState title="No goals yet" description="Set appearance targets to track progress over time." />
+      ) : (
+        <div className="space-y-3">
+          {goals.map((goal) => (
+            <Card key={goal.id} className="p-4">
+              <div className="flex items-start justify-between gap-4">
+                <label className="flex cursor-pointer items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={!!goal.completed}
+                    onChange={() => toggleGoal(goal)}
+                    className="mt-1 h-4 w-4 text-[var(--accent)]"
+                  />
+                  <div>
+                    <p className={`font-semibold ${goal.completed ? 'text-[var(--text-secondary)] line-through' : 'text-white'}`}>
+                      {goal.goal_text}
+                    </p>
+                    <p className="text-xs text-[var(--text-secondary)]">
+                      {goal.category}
+                      {goal.target_date ? ` · ${format(new Date(goal.target_date), 'PP')}` : ''}
+                    </p>
+                  </div>
+                </label>
+                <span className={`rounded-full px-2 py-1 text-xs ${goal.completed ? 'bg-[var(--accent)]/20 text-[var(--accent)]' : 'bg-[var(--surface-2)] text-[var(--text-secondary)]'}`}>
+                  {goal.completed ? 'Done' : 'Active'}
+                </span>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
